@@ -1,4 +1,4 @@
-/* ============ NEONDROP — UI shell (nav, header, ticker) ============ */
+/* ============ NEONDROP — UI shell (nav, header) ============ */
 window.UI = (function () {
   const S = window.SKINS, St = window.STATE;
   const VIEWS = ['cases', 'open', 'upgrade', 'contract', 'inventory'];
@@ -37,43 +37,14 @@ window.UI = (function () {
     const data = [
       [FX.fmt(St.getInventory().length), 'предметов'],
       [FX.fmt(st.opened || 0), 'кейсов открыто'],
-      [FX.fmt(st.bestDrop || 0) + '◎', 'лучший дроп'],
+      [FX.fmt(st.bestDrop || 0) + FX.CUR, 'лучший дроп'],
       [S.all().length ? FX.fmt(S.all().length) : '—', 'скинов в базе'],
     ];
     document.getElementById('hero-stats').innerHTML = data
       .map(([b, s]) => `<div class="hero-stat"><b>${b}</b><span>${s}</span></div>`).join('');
   }
 
-  // ----- live ticker -----
-  function startTicker() {
-    const track = document.getElementById('ticker-track');
-    const names = ['Crypt0', 'NEK0', 'sw1ft', 'b1t', 'Mango', 'GLHF', 'volna', 'kazik_god', 'shadow', 'pixel', 'Nova', 'frost'];
-    function makeItem() {
-      const drop = S.randomDrop();
-      const u = names[(Math.random() * names.length) | 0];
-      const d = document.createElement('div');
-      d.className = 'tick-item';
-      d.style.borderLeftColor = drop.color;
-      d.innerHTML = `<img src="${FX.esc(drop.image)}" onerror="this.style.display='none'"/>
-        <span class="tick-name">${FX.esc(u)} · ${FX.esc(drop.skin)}</span>
-        <span class="tick-price">${FX.fmt(drop.price)}◎</span>`;
-      return d;
-    }
-    function fill() {
-      track.innerHTML = '';
-      const items = [];
-      for (let i = 0; i < 16; i++) items.push(makeItem());
-      // duplicate for seamless loop
-      items.concat(items.map((n) => n.cloneNode(true))).forEach((n) => track.appendChild(n));
-    }
-    fill();
-    // occasionally prepend a fresh hot drop
-    setInterval(() => {
-      const fresh = makeItem();
-      track.insertBefore(fresh, track.firstChild);
-      if (track.children.length > 40) track.removeChild(track.lastChild);
-    }, 5200);
-  }
+  // ----- live ticker removed -----
 
   // ----- sidebar (mobile) -----
   function openSidebar() {
@@ -93,7 +64,7 @@ window.UI = (function () {
     if (promo) {
       promo.classList.toggle('claimed', !can);
       const sub = document.getElementById('promo-bonus-sub');
-      if (sub) sub.textContent = can ? 'Забери +500◎' : 'Уже получен сегодня';
+      if (sub) sub.textContent = can ? 'Забери +1 000 ₽' : 'Уже получен сегодня';
     }
   }
   function claimBonus() {
@@ -103,11 +74,11 @@ window.UI = (function () {
       FX.toast(`Бонус будет доступен через ${h}ч ${m}м`, 'bad');
       return;
     }
-    const amount = 500;
+    const amount = 1000;
     St.claimBonus(amount);
     FX.confetti(80, ['#ffb649', '#fff']);
     FX.sound.win();
-    FX.toast(`Бонус получен: +${amount}◎`, 'gold');
+    FX.toast(`Бонус получен: +${amount} ₽`, 'gold');
     updateBonusBtn();
   }
 
@@ -129,7 +100,7 @@ window.UI = (function () {
     const promo = document.getElementById('promo-bonus');
     if (promo) promo.addEventListener('click', claimBonus);
     document.getElementById('add-funds').addEventListener('click', () => {
-      St.addBalance(1000); FX.sound.coin(); FX.toast('+1000◎ демо-баланса', 'good');
+      St.addBalance(5000); FX.sound.coin(); FX.toast('+5 000 ₽ демо-баланса', 'good');
     });
 
     // balance reactive
@@ -144,5 +115,5 @@ window.UI = (function () {
     else showView('cases');
   }
 
-  return { init, showView, renderHeroStats, startTicker, updateBonusBtn };
+  return { init, showView, renderHeroStats, updateBonusBtn };
 })();

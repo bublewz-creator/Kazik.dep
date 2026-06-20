@@ -24,13 +24,13 @@ window.INVENTORY = (function () {
     const grid = document.getElementById('inventory-grid');
     const empty = document.getElementById('inv-empty');
     const total = inv.reduce((a, b) => a + b.price, 0);
-    document.getElementById('inv-total').textContent = `${FX.fmt(total)}◎ · ${inv.length} шт.`;
+    document.getElementById('inv-total').textContent = `${FX.fmt(total)}${FX.CUR} · ${inv.length} шт.`;
 
     if (!inv.length) { grid.innerHTML = ''; empty.classList.remove('hidden'); return; }
     empty.classList.add('hidden');
     grid.innerHTML = inv.map((it) => FX.itemCardHTML(it, {
       attrs: `data-uid="${it.uid}"`,
-      extra: `<button class="sell-btn" data-sell="${it.uid}">Продать ${FX.fmt(it.price)}◎</button>`,
+      extra: `<button class="sell-btn" data-sell="${it.uid}">Продать ${FX.fmt(it.price)}${FX.CUR}</button>`,
     })).join('');
     grid.querySelectorAll('[data-sell]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); sell(b.dataset.sell); }));
   }
@@ -41,7 +41,7 @@ window.INVENTORY = (function () {
     St.removeItem(uid);
     St.addBalance(it.price);
     FX.sound.coin();
-    FX.toast(`Продано: ${it.skin} за ${FX.fmt(it.price)}◎`, 'gold');
+    FX.toast(`Продано: ${it.skin} за ${FX.fmt(it.price)}${FX.CUR}`, 'gold');
     render();
   }
 
@@ -49,11 +49,11 @@ window.INVENTORY = (function () {
     const inv = St.getInventory();
     if (!inv.length) { FX.toast('Инвентарь пуст', 'bad'); return; }
     const total = inv.reduce((a, b) => a + b.price, 0);
-    if (!confirm(`Продать все ${inv.length} предметов за ${FX.fmt(total)}◎?`)) return;
+    if (!confirm(`Продать все ${inv.length} предметов за ${FX.fmt(total)}${FX.CUR}?`)) return;
     St.clearInventory();
     St.addBalance(total);
     FX.sound.coin();
-    FX.toast(`Продано всё за ${FX.fmt(total)}◎`, 'gold');
+    FX.toast(`Продано всё за ${FX.fmt(total)}${FX.CUR}`, 'gold');
     render();
   }
 

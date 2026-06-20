@@ -66,11 +66,11 @@ window.SKINS = (function () {
           rarity,
           color: D.RARITIES[rarity].color,
           image: s.image || null,
-          price: D.priceFor(rarity, s.name),
+          price: D.priceFor(rarity, s.name, weapon, skin),
         });
       }
     } else {
-      list = D.buildFallback().map((s) => ({ ...s, price: D.priceFor(s.rarity, s.name) }));
+      list = D.buildFallback().map((s) => ({ ...s, price: D.priceFor(s.rarity, s.name, s.weapon, s.skin) }));
     }
 
     // ensure every skin has an image

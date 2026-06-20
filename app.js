@@ -19,7 +19,6 @@
   // now render data-dependent UI
   window.CASES.renderGrid('all');
   window.UI.renderHeroStats();
-  window.UI.startTicker();
 
   loader.classList.add('hidden');
 

@@ -137,7 +137,7 @@ window.UPGRADE = (function () {
       const tier = (D.RARITIES[prize.rarity] || {}).tier || 0;
       FX.confetti(tier >= 5 ? 180 : 110, [prize.color, '#fff', '#00e0c6']);
       FX.sound.jackpot();
-      FX.toast(`Апгрейд удался! +${prize.skin} (${FX.fmt(prize.price)}◎)`, 'good');
+      FX.toast(`Апгрейд удался! +${prize.skin} (${FX.fmt(prize.price)}${FX.CUR})`, 'good');
     } else {
       FX.sound.lose();
       FX.toast(`Апгрейд провалился. Потеряно ${removed.length} предмет(ов).`, 'bad');

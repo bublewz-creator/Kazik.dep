@@ -2,13 +2,13 @@
 window.DATA = (function () {
   // Rarity tiers — colors match CS2 grades.
   const RARITIES = {
-    consumer:   { key: 'consumer',   name: 'Consumer',   color: '#b0c3d9', tier: 0, base: [2, 12] },
-    industrial: { key: 'industrial', name: 'Industrial', color: '#5e98d9', tier: 1, base: [6, 28] },
-    milspec:    { key: 'milspec',    name: 'Mil-Spec',   color: '#4b69ff', tier: 2, base: [12, 90] },
-    restricted: { key: 'restricted', name: 'Restricted', color: '#8847ff', tier: 3, base: [45, 320] },
-    classified: { key: 'classified', name: 'Classified', color: '#d32ce6', tier: 4, base: [180, 1100] },
-    covert:     { key: 'covert',     name: 'Covert',     color: '#eb4b4b', tier: 5, base: [600, 4200] },
-    gold:       { key: 'gold',       name: '★ Exceedingly Rare', color: '#ffae39', tier: 6, base: [2200, 26000] },
+    consumer:   { key: 'consumer',   name: 'Consumer',   color: '#b0c3d9', tier: 0, base: [25, 150] },
+    industrial: { key: 'industrial', name: 'Industrial', color: '#5e98d9', tier: 1, base: [80, 400] },
+    milspec:    { key: 'milspec',    name: 'Mil-Spec',   color: '#4b69ff', tier: 2, base: [150, 1200] },
+    restricted: { key: 'restricted', name: 'Restricted', color: '#8847ff', tier: 3, base: [500, 4500] },
+    classified: { key: 'classified', name: 'Classified', color: '#d32ce6', tier: 4, base: [1500, 18000] },
+    covert:     { key: 'covert',     name: 'Covert',     color: '#eb4b4b', tier: 5, base: [4000, 75000] },
+    gold:       { key: 'gold',       name: '★ Exceedingly Rare', color: '#ffae39', tier: 6, base: [18000, 450000] },
   };
   const TIER_ORDER = ['consumer', 'industrial', 'milspec', 'restricted', 'classified', 'covert', 'gold'];
 
@@ -21,24 +21,22 @@ window.DATA = (function () {
     { rarity: 'gold',       p: 0.0026 },
   ];
 
-  // Wear tiers add price variance & flavor.
+  // Wear tiers — множители относительно цены FT (как на Steam Market).
   const WEARS = [
-    { name: 'Factory New',     short: 'FN', mult: 1.0 },
-    { name: 'Minimal Wear',    short: 'MW', mult: 0.82 },
-    { name: 'Field-Tested',    short: 'FT', mult: 0.62 },
-    { name: 'Well-Worn',       short: 'WW', mult: 0.48 },
-    { name: 'Battle-Scarred',  short: 'BS', mult: 0.38 },
+    { name: 'Factory New',     short: 'FN', mult: 1.55 },
+    { name: 'Minimal Wear',    short: 'MW', mult: 1.18 },
+    { name: 'Field-Tested',    short: 'FT', mult: 1.0 },
+    { name: 'Well-Worn',       short: 'WW', mult: 0.78 },
+    { name: 'Battle-Scarred',  short: 'BS', mult: 0.62 },
   ];
 
-  // Case definitions. priceBand filters which skins (by computed value) can appear.
-  // odds-driven rarity, value band keeps each case thematically priced.
   const CASES = [
-    { id: 'starter',  name: 'Стартовый кейс',  glow: '#4b69ff', tag: 'NEW',   price: 45,   band: [5, 1500],   desc: 'Идеален для первого открытия. Базовый набор скинов и шанс на нож.' },
-    { id: 'neon',     name: 'Neon Riot',       glow: '#00e0c6', tag: 'HOT',   price: 120,  band: [12, 3500],  desc: 'Яркие граффити-скины и кислотные раскраски.' },
-    { id: 'crimson',  name: 'Crimson Web',     glow: '#eb4b4b', tag: '',      price: 260,  band: [30, 8000],  desc: 'Красные covert-скины и редкие ножи с паутиной.' },
-    { id: 'gold',     name: 'Golden Vault',    glow: '#ffb649', tag: 'GOLD',  price: 650,  band: [120, 20000],desc: 'Премиальный кейс с повышенным шансом на золото.' },
-    { id: 'knife',    name: 'Knife & Gloves',  glow: '#8847ff', tag: '★',     price: 1400, band: [300, 26000],desc: 'Только дорогой лут: ножи, перчатки и топовые covert.' },
-    { id: 'budget',   name: 'Бюджетный кейс',  glow: '#5e98d9', tag: '',      price: 25,   band: [2, 600],    desc: 'Дёшево и сердито — раскачай инвентарь с нуля.' },
+    { id: 'starter',  name: 'Стартовый кейс',  glow: '#4b69ff', tag: 'NEW',   price: 99,   band: [80, 8000],    desc: 'Идеален для первого открытия. Базовый набор скинов и шанс на нож.' },
+    { id: 'neon',     name: 'Neon Riot',       glow: '#00e0c6', tag: 'HOT',   price: 199,  band: [150, 18000],  desc: 'Яркие граффити-скины и кислотные раскраски.' },
+    { id: 'crimson',  name: 'Crimson Web',     glow: '#eb4b4b', tag: '',      price: 399,  band: [400, 45000],  desc: 'Красные covert-скины и редкие ножи с паутиной.' },
+    { id: 'gold',     name: 'Golden Vault',    glow: '#ffb649', tag: 'GOLD',  price: 799,  band: [1200, 120000],desc: 'Премиальный кейс с повышенным шансом на золото.' },
+    { id: 'knife',    name: 'Knife & Gloves',  glow: '#8847ff', tag: '★',     price: 1499, band: [8000, 450000],desc: 'Только дорогой лут: ножи, перчатки и топовые covert.' },
+    { id: 'budget',   name: 'Бюджетный кейс',  glow: '#5e98d9', tag: '',      price: 49,   band: [30, 3500],    desc: 'Дёшево и сердито — раскачай инвентарь с нуля.' },
   ];
 
   // ---- deterministic pseudo-random from string (stable prices per skin) ----
@@ -51,14 +49,55 @@ window.DATA = (function () {
     return (h >>> 0) / 4294967295;
   }
 
-  // Compute a stable price for a skin from its rarity + name.
-  function priceFor(rarityKey, name) {
+  // Ориентиры Steam Market (~₽, Field-Tested). Обновляются по имени «Оружие | Скин».
+  const MARKET_HINTS = {
+    'AWP | Asiimov': 5200, 'M4A4 | Asiimov': 6800, 'AK-47 | Redline': 3400,
+    'AK-47 | Vulcan': 22000, 'AK-47 | Fire Serpent': 98000, 'AK-47 | Bloodsport': 8500,
+    'AWP | Dragon Lore': 920000, 'AWP | Lightning Strike': 9200, 'AWP | Hyper Beast': 4800,
+    'AWP | Neo-Noir': 6200, 'AWP | Wildfire': 7500, 'M4A4 | Howl': 1200000,
+    'M4A1-S | Printstream': 13500, 'M4A1-S | Hyper Beast': 5200, 'M4A1-S | Player Two': 4800,
+    'Desert Eagle | Blaze': 48000, 'Desert Eagle | Printstream': 11000, 'Desert Eagle | Code Red': 3800,
+    'USP-S | Kill Confirmed': 8200, 'USP-S | Printstream': 9500, 'Glock-18 | Fade': 32000,
+    'MAC-10 | Neon Rider': 4200, 'P250 | Asiimov': 520, 'P90 | Asiimov': 480,
+    'Karambit | Doppler': 95000, 'Karambit | Fade': 145000, 'Butterfly Knife | Fade': 195000,
+    'M9 Bayonet | Doppler': 88000, 'Bayonet | Doppler': 62000, 'Sport Gloves | Vice': 185000,
+    'Sport Gloves | Pandora\'s Box': 420000, 'Specialist Gloves | Crimson Kimono': 165000,
+  };
+
+  const WEAPON_MULT = {
+    'AWP': 1.35, 'AK-47': 1.22, 'M4A4': 1.2, 'M4A1-S': 1.18, 'Desert Eagle': 1.15,
+    'USP-S': 1.08, 'Glock-18': 1.05, 'SSG 08': 1.1,
+  };
+
+  function weaponMult(weapon) {
+    if (!weapon) return 1;
+    for (const [k, v] of Object.entries(WEAPON_MULT)) if (weapon.includes(k)) return v;
+    if (/knife|bayonet|karambit|dagger|gloves/i.test(weapon)) return 2.8;
+    return 1;
+  }
+
+  // Compute stable price in rubles (FT baseline before wear).
+  function priceFor(rarityKey, name, weapon, skin) {
+    const full = name || (weapon && skin ? weapon + ' | ' + skin : '');
+    if (MARKET_HINTS[full]) return MARKET_HINTS[full];
+
+    const skinName = (skin || (full.split('|')[1] || '')).trim().toLowerCase();
+    if (skinName.includes('asiimov')) {
+      const w = (weapon || full.split('|')[0] || '').toLowerCase();
+      if (w.includes('awp')) return 5200;
+      if (w.includes('m4a4')) return 6800;
+      if (w.includes('p250') || w.includes('p90')) return 500;
+    }
+    if (skinName.includes('printstream')) return (weapon || '').includes('M4A1') ? 13500 : 9500;
+    if (skinName.includes('doppler')) return 85000;
+    if (skinName.includes('fade')) return /glove/i.test(weapon || '') ? 95000 : 120000;
+
     const r = RARITIES[rarityKey] || RARITIES.milspec;
     const [lo, hi] = r.base;
-    const t = hashStr(name + rarityKey);
-    // skew toward lower end (more cheap skins) using power curve
-    const v = lo + (hi - lo) * Math.pow(t, 1.7);
-    return Math.max(1, Math.round(v));
+    const t = hashStr(full + rarityKey);
+    let v = lo + (hi - lo) * Math.pow(t, 1.55);
+    v *= weaponMult(weapon || full.split('|')[0].trim());
+    return Math.max(25, Math.round(v));
   }
 
   // Map API rarity names -> our tier keys.

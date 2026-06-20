@@ -1,7 +1,7 @@
 /* ============ NEONDROP — persistent state ============ */
 window.STATE = (function () {
-  const KEY = 'neondrop_save_v1';
-  const START_BALANCE = 1500;
+  const KEY = 'neondrop_save_v2';
+  const START_BALANCE = 10000;
 
   const def = {
     balance: START_BALANCE,

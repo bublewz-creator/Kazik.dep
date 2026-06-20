@@ -1,5 +1,7 @@
 /* ============ NEONDROP — effects & shared helpers ============ */
 window.FX = (function () {
+  const CUR = ' ₽';
+
   // ----- number / text -----
   function fmt(n) {
     n = Math.round(n);
@@ -25,7 +27,7 @@ window.FX = (function () {
           <div class="item-weapon">${esc(item.weapon || '')}</div>
           <div class="item-name">${esc(item.skin || item.name)}</div>
           <div class="item-bottom">
-            <span class="item-price">${fmt(item.price)}◎</span>${wear}
+            <span class="item-price">${fmt(item.price)}${CUR}</span>${wear}
           </div>
         </div>
         ${extra}
@@ -118,5 +120,5 @@ window.FX = (function () {
 
   function flyi(item) { return (window.DATA.RARITIES[item.rarity] || {}).tier >= 5; }
 
-  return { fmt, esc, itemCardHTML, toast, confetti, sound, isRare: flyi };
+  return { fmt, esc, itemCardHTML, toast, confetti, sound, isRare: flyi, CUR };
 })();

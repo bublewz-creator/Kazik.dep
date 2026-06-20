@@ -129,7 +129,7 @@ a { color: inherit; text-decoration: none; }
   backdrop-filter: blur(16px); background: linear-gradient(180deg, rgba(8,10,16,0.92), rgba(8,10,16,0.68));
   border-bottom: 1px solid var(--panel-line);
 }
-.burger { display: none; background: none; border: 0; color: var(--text); font-size: 1.5rem; cursor: pointer; padding: 0; }
+.burger { display: none; background: none; border: 0; color: var(--text); font-size: 1.5rem; cursor: pointer; padding: 0; margin-right: auto; }
 .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
 .scrim { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 85; opacity: 0; pointer-events: none; transition: 0.25s; }
 .scrim.show { opacity: 1; pointer-events: auto; }
@@ -157,30 +157,6 @@ a { color: inherit; text-decoration: none; }
   background: rgba(0,224,198,0.2); color: var(--accent-2); font-size: 1.1rem; font-weight: 800; line-height: 1;
 }
 .add-funds:hover { background: rgba(0,224,198,0.35); }
-.burger { display: none; background: none; border: 0; color: var(--text); font-size: 1.5rem; cursor: pointer; }
-
-/* ===== Ticker (lives in topbar) ===== */
-.ticker {
-  flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; height: 100%; overflow: hidden;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 92%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 92%, transparent);
-}
-.ticker-label {
-  flex-shrink: 0; font-family: "Chakra Petch"; font-size: 0.7rem; letter-spacing: 1.5px;
-  color: var(--accent-3); padding: 4px 10px; border-radius: 6px; background: rgba(255,59,141,0.12);
-  border: 1px solid rgba(255,59,141,0.3);
-}
-.ticker-label::before { content: "● "; animation: pulse 1.2s infinite; }
-.ticker-track { display: flex; gap: 10px; animation: ticker 38s linear infinite; }
-.ticker:hover .ticker-track { animation-play-state: paused; }
-.tick-item {
-  display: flex; align-items: center; gap: 8px; flex-shrink: 0; padding: 4px 10px 4px 4px;
-  background: rgba(255,255,255,0.04); border: 1px solid var(--panel-line); border-radius: 9px;
-  border-left-width: 3px;
-}
-.tick-item img { width: 38px; height: 28px; object-fit: contain; }
-.tick-item .tick-name { font-size: 0.78rem; color: var(--muted); max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tick-item .tick-price { font-size: 0.78rem; font-weight: 700; color: var(--gold); }
 
 /* ===== Layout ===== */
 main { width: 100%; max-width: 1300px; margin: 0 auto; padding: 28px 26px 50px; flex: 1; }
@@ -482,7 +458,6 @@ input[type="range"] { accent-color: var(--accent); width: 140px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 @keyframes wiggle { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-12deg); } 75% { transform: rotate(12deg); } }
-@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes popIn { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
 @keyframes rewardPop { from { opacity: 0; transform: translateY(20px) scale(0.8); } to { opacity: 1; transform: none; } }
@@ -504,7 +479,6 @@ input[type="range"] { accent-color: var(--accent); width: 140px; }
 }
 @media (max-width: 560px) {
   .topbar { padding: 0 14px; gap: 10px; height: 60px; }
-  .ticker-label { display: none; }
   .hero { padding: 36px 22px; }
   main { padding: 18px 14px 50px; }
   .reward-items .item { width: 140px; }

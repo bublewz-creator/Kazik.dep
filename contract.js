@@ -33,7 +33,7 @@ window.CONTRACT = (function () {
     btn.disabled = selected.length !== 3 || busy;
     if (selected.length === 3) {
       const sum = selected.reduce((a, u) => a + (St.findItem(u)?.price || 0), 0);
-      btn.textContent = `Заключить контракт (≈${FX.fmt(sum * 0.9)}◎)`;
+      btn.textContent = `Заключить контракт (≈${FX.fmt(sum * 0.9)}${FX.CUR})`;
     } else btn.textContent = 'Заключить контракт';
   }
 
@@ -85,7 +85,7 @@ window.CONTRACT = (function () {
       const tier = (D.RARITIES[chosen.rarity] || {}).tier || 0;
       if (tier >= 5) { FX.confetti(160, [chosen.color, '#fff']); FX.sound.jackpot(); }
       else { FX.confetti(80); FX.sound.win(); }
-      FX.toast(`Контракт: получен ${chosen.skin} (${FX.fmt(chosen.price)}◎, ${gained >= 0 ? '+' : ''}${FX.fmt(gained)}◎)`, gained >= 0 ? 'good' : 'gold');
+      FX.toast(`Контракт: получен ${chosen.skin} (${FX.fmt(chosen.price)}${FX.CUR}, ${gained >= 0 ? '+' : ''}${FX.fmt(gained)}${FX.CUR})`, gained >= 0 ? 'good' : 'gold');
       selected = [];
       busy = false;
       onShow();

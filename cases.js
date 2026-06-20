@@ -29,7 +29,7 @@ window.CASES = (function () {
         <h3>${FX.esc(c.name)}</h3>
         <div class="case-meta">${FX.esc(c.desc).slice(0, 60)}…</div>
         <div class="case-open-row">
-          <span class="case-price"><span class="coin">◎</span>${FX.fmt(c.price)}</span>
+          <span class="case-price"><span class="coin">₽</span>${FX.fmt(c.price)}</span>
           <button class="btn btn-primary case-open-btn">Открыть</button>
         </div>
       </div>`;
@@ -72,7 +72,7 @@ window.CASES = (function () {
   function syncQtyUI() {
     document.querySelectorAll('#qty-switch button').forEach((b) => b.classList.toggle('active', +b.dataset.qty === qty));
     const total = currentCase.price * qty;
-    document.getElementById('open-price').innerHTML = `Открыть ${qty > 1 ? 'x' + qty : ''} — ${FX.fmt(total)}◎`;
+    document.getElementById('open-price').innerHTML = `Открыть ${qty > 1 ? 'x' + qty : ''} — ${FX.fmt(total)}${FX.CUR}`;
   }
 
   // idle decorative strip
@@ -93,7 +93,7 @@ window.CASES = (function () {
     return `<div class="roul-item" style="--rc:${it.color}">
       <img src="${FX.esc(it.image)}" onerror="this.src=SKINS.placeholder({color:'${it.color}',weapon:'${escq(it.weapon)}',skin:'${escq(it.skin)}'})"/>
       <div class="ri-name">${FX.esc(it.skin || it.name)}</div>
-      <div class="ri-price">${FX.fmt(it.price)}◎</div>
+      <div class="ri-price">${FX.fmt(it.price)}${FX.CUR}</div>
     </div>`;
   }
   function escq(s){return String(s==null?'':s).replace(/['\\]/g,'\\$&');}
@@ -223,7 +223,7 @@ window.CASES = (function () {
     sellBtn.onclick = () => {
       St.addBalance(sum);
       FX.sound.coin();
-      FX.toast(`Продано за ${FX.fmt(sum)}◎`, 'gold');
+      FX.toast(`Продано за ${FX.fmt(sum)}${FX.CUR}`, 'gold');
       close();
     };
   }
