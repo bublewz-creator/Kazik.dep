@@ -70,7 +70,9 @@ window.ECONOMY = (function () {
       // ещё расширяем: любой скин (кроме ★) по цене, если всё ещё мало
       if (arr.length < MIN_POOL_SIZE && rarity !== 'gold') {
         const pad = Math.round(caseDef.price * 0.35);
-        arr = allSkins.filter((s) => s.rarity !== 'gold' && s.price >= lo0 - pad && s.price <= hi0 + pad);
+        arr = allSkins.filter((s) =>
+          s.rarity !== 'gold' && s.price >= lo0 - pad && s.price <= hi0 + pad
+        );
       }
 
       // ★ только ножи/перчатки

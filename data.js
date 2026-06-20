@@ -58,7 +58,8 @@ window.DATA = (function () {
     'M4A1-S | Printstream': 13500, 'M4A1-S | Hyper Beast': 5200, 'M4A1-S | Player Two': 4800,
     'Desert Eagle | Blaze': 48000, 'Desert Eagle | Printstream': 11000, 'Desert Eagle | Code Red': 3800,
     'USP-S | Kill Confirmed': 8200, 'USP-S | Printstream': 9500, 'Glock-18 | Fade': 32000,
-    'MAC-10 | Neon Rider': 4200, 'P250 | Asiimov': 520, 'P90 | Asiimov': 480,
+    'MAC-10 | Neon Rider': 4200, 'P250 | Asiimov': 2200, 'P90 | Asiimov': 21500,
+    'AK-47 | Asiimov': 12800,
     'Karambit | Doppler': 95000, 'Karambit | Fade': 145000, 'Butterfly Knife | Fade': 195000,
     'M9 Bayonet | Doppler': 88000, 'Bayonet | Doppler': 62000, 'Sport Gloves | Vice': 185000,
     'Sport Gloves | Pandora\'s Box': 420000, 'Specialist Gloves | Crimson Kimono': 165000,
@@ -86,7 +87,9 @@ window.DATA = (function () {
       const w = (weapon || full.split('|')[0] || '').toLowerCase();
       if (w.includes('awp')) return 5200;
       if (w.includes('m4a4')) return 6800;
-      if (w.includes('p250') || w.includes('p90')) return 500;
+      if (w.includes('ak-47') || w.includes('ak47')) return 12800;
+      if (w.includes('p90')) return 21500;
+      if (w.includes('p250')) return 2200;
     }
     if (skinName.includes('printstream')) return (weapon || '').includes('M4A1') ? 13500 : 9500;
     if (skinName.includes('doppler')) return 85000;

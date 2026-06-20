@@ -113,7 +113,6 @@ window.SKINS = (function () {
 
   function contentsForCase(caseDef) {
     const pool = poolForCase(caseDef);
-    const scale = scaleForCase(caseDef);
     const out = [];
     const limits = { gold: 5, covert: 7, classified: 8, restricted: 10, milspec: 12 };
 
@@ -123,12 +122,8 @@ window.SKINS = (function () {
       const skins = arr.slice(0, limits[tier] || 8);
       skins.forEach((s) => {
         D.WEARS.forEach((wear) => {
-          let market = Math.max(1, Math.round(s.price * wear.mult));
-          let price = E().sellPrice(market);
-          if (scale !== 1) {
-            market = Math.max(1, Math.round(market * scale));
-            price = Math.max(1, Math.round(price * scale));
-          }
+          const market = Math.max(1, Math.round(s.price * wear.mult));
+          const price = E().sellPrice(market);
           out.push({
             id: s.id + '-' + wear.short, name: s.name, weapon: s.weapon, skin: s.skin,
             rarity: s.rarity, color: s.color, image: s.image,
