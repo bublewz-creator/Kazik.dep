@@ -9,7 +9,7 @@ window.UI = (function () {
       if (el) el.classList.toggle('hidden', v !== name);
     });
     document.querySelectorAll('.nav-link').forEach((a) => a.classList.toggle('active', a.dataset.nav === name));
-    document.getElementById('main-nav').classList.remove('open');
+    closeSidebar();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     if (name === 'inventory') window.INVENTORY.render();
@@ -75,10 +75,26 @@ window.UI = (function () {
     }, 5200);
   }
 
+  // ----- sidebar (mobile) -----
+  function openSidebar() {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('scrim').classList.add('show');
+  }
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('scrim').classList.remove('show');
+  }
+
   // ----- bonus & funds -----
   function updateBonusBtn() {
-    const btn = document.getElementById('bonus-btn');
-    btn.classList.toggle('claimed', !St.canClaimBonus());
+    const can = St.canClaimBonus();
+    document.getElementById('bonus-btn').classList.toggle('claimed', !can);
+    const promo = document.getElementById('promo-bonus');
+    if (promo) {
+      promo.classList.toggle('claimed', !can);
+      const sub = document.getElementById('promo-bonus-sub');
+      if (sub) sub.textContent = can ? 'Забери +500◎' : 'Уже получен сегодня';
+    }
   }
   function claimBonus() {
     if (!St.canClaimBonus()) {
@@ -105,9 +121,13 @@ window.UI = (function () {
     });
 
     document.getElementById('burger').addEventListener('click', () => {
-      document.getElementById('main-nav').classList.toggle('open');
+      const open = document.getElementById('sidebar').classList.contains('open');
+      open ? closeSidebar() : openSidebar();
     });
+    document.getElementById('scrim').addEventListener('click', closeSidebar);
     document.getElementById('bonus-btn').addEventListener('click', claimBonus);
+    const promo = document.getElementById('promo-bonus');
+    if (promo) promo.addEventListener('click', claimBonus);
     document.getElementById('add-funds').addEventListener('click', () => {
       St.addBalance(1000); FX.sound.coin(); FX.toast('+1000◎ демо-баланса', 'good');
     });
