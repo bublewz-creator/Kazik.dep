@@ -23,11 +23,11 @@ window.DATA = (function () {
 
   // Wear tiers — множители относительно цены FT (как на Steam Market).
   const WEARS = [
-    { name: 'Factory New',     short: 'FN', mult: 1.55 },
-    { name: 'Minimal Wear',    short: 'MW', mult: 1.18 },
-    { name: 'Field-Tested',    short: 'FT', mult: 1.0 },
-    { name: 'Well-Worn',       short: 'WW', mult: 0.78 },
-    { name: 'Battle-Scarred',  short: 'BS', mult: 0.62 },
+    { name: 'Factory New',     nameRu: 'Прямо с завода',   short: 'FN', mult: 1.55 },
+    { name: 'Minimal Wear',    nameRu: 'Немного поношенное', short: 'MW', mult: 1.18 },
+    { name: 'Field-Tested',    nameRu: 'После полевых',    short: 'FT', mult: 1.0 },
+    { name: 'Well-Worn',       nameRu: 'Поношенное',       short: 'WW', mult: 0.78 },
+    { name: 'Battle-Scarred',  nameRu: 'Закалённое',       short: 'BS', mult: 0.62 },
   ];
 
   const CASES = [
@@ -138,34 +138,86 @@ window.DATA = (function () {
     ['P2000', 'Ocean Foam', 'milspec'], ['Sawed-Off', 'The Kraken', 'classified'], ['Negev', 'Power Loader', 'milspec'],
   ];
 
-  function buildFallback() {
-    // Prefer the embedded real-skin dataset (with real images) loaded from skins-data.js
-    const real = (typeof window !== 'undefined' && Array.isArray(window.FALLBACK_SKINS)) ? window.FALLBACK_SKINS : null;
-    if (real && real.length) {
-      return real.map((o) => {
-        const rarity = o.r || 'milspec';
-        return {
-          id: (o.w + '-' + o.s).replace(/\s+/g, '-').toLowerCase(),
-          weapon: o.w,
-          skin: o.s,
-          name: o.w + ' | ' + o.s,
-          rarity,
-          color: (RARITIES[rarity] || RARITIES.milspec).color,
-          image: o.i || null,
-        };
-      });
-    }
-    // last-resort text-only fallback
-    return FALLBACK.map(([weapon, name, rarity]) => ({
-      id: (weapon + '-' + name).replace(/\s+/g, '-').toLowerCase(),
-      weapon, skin: name, name: weapon + ' | ' + name,
+  // Дешёвые скины для наполнения бюджетных кейсов (если в API мало consumer/industrial).
+  const BUDGET_SKINS = [
+    ['P250', 'Sand Dune', 'consumer'], ['P250', 'Boreal Forest', 'consumer'], ['P250', 'Facility Draft', 'consumer'],
+    ['Nova', 'Walnut', 'consumer'], ['Nova', 'Polar Mesh', 'consumer'], ['Nova', 'Sand Dune', 'consumer'],
+    ['MP9', 'Slide', 'consumer'], ['MP9', 'Storm', 'consumer'], ['MP9', 'Sand Dashed', 'consumer'],
+    ['G3SG1', 'Orange Crash', 'consumer'], ['G3SG1', 'Desert Storm', 'consumer'],
+    ['SCAR-20', 'Sand Mesh', 'consumer'], ['SCAR-20', 'Contractor', 'consumer'],
+    ['SG 553', 'Army Sheen', 'consumer'], ['SG 553', 'Waves Perforated', 'consumer'],
+    ['MAC-10', 'Silver', 'industrial'], ['MAC-10', 'Indigo', 'industrial'], ['MAC-10', 'Candy Apple', 'industrial'],
+    ['UMP-45', 'Gunsmoke', 'industrial'], ['UMP-45', 'Corporal', 'industrial'],
+    ['PP-Bizon', 'Sand Dashed', 'consumer'], ['PP-Bizon', 'Facility Sketch', 'consumer'],
+    ['Five-SeveN', 'Coolant', 'consumer'], ['Five-SeveN', 'Orange Peel', 'consumer'],
+    ['Dual Berettas', 'Contractor', 'consumer'], ['Dual Berettas', 'Colony', 'consumer'],
+    ['R8 Revolver', 'Bone Mask', 'consumer'], ['R8 Revolver', 'Desert Brush', 'consumer'],
+    ['Negev', 'Army Sheen', 'consumer'], ['Negev', 'Bulkhead', 'consumer'],
+    ['Sawed-Off', 'Forest DDPAT', 'consumer'], ['Sawed-Off', 'Snake Camo', 'consumer'],
+    ['XM1014', 'Blue Spruce', 'consumer'], ['XM1014', 'Blue Steel', 'industrial'],
+    ['Galil AR', 'Sage Spray', 'consumer'], ['FAMAS', 'Colony', 'consumer'],
+    ['Tec-9', 'Groundwater', 'consumer'], ['Tec-9', 'Army Mesh', 'consumer'],
+    ['P90', 'Sand Spray', 'consumer'], ['P90', 'Scorched', 'consumer'],
+    ['MP7', 'Prey', 'consumer'], ['MP7', 'Motherboard', 'industrial'],
+    ['P2000', 'Granite Marbleized', 'industrial'], ['P2000', 'Pathfinder', 'industrial'],
+    ['CZ75-Auto', 'Tuxedo', 'milspec'], ['CZ75-Auto', 'Polymer', 'milspec'],
+    ['Desert Eagle', 'Bronze Deco', 'milspec'], ['Desert Eagle', 'Corinthian', 'milspec'],
+    ['Glock-18', 'Sacrifice', 'milspec'], ['Glock-18', 'Off World', 'milspec'],
+    ['USP-S', 'Ticket to Hell', 'restricted'], ['AWP', 'Worm God', 'restricted'],
+    ['AK-47', 'Safety Net', 'restricted'], ['M4A4', 'Sheet Lightning', 'restricted'],
+  ];
+
+  function budgetEntries() {
+    return BUDGET_SKINS.map(([weapon, skin, rarity]) => ({
+      id: (weapon + '-' + skin).replace(/\s+/g, '-').toLowerCase(),
+      weapon, skin, name: weapon + ' | ' + skin,
       rarity, color: RARITIES[rarity].color, image: null,
     }));
   }
 
+  function buildFallback() {
+    // Prefer the embedded real-skin dataset (with real images) loaded from skins-data.js
+    const real = (typeof window !== 'undefined' && Array.isArray(window.FALLBACK_SKINS)) ? window.FALLBACK_SKINS : null;
+    if (real && real.length) {
+      const seen = new Set(real.map((o) => (o.w + '|' + o.s).toLowerCase()));
+      const merged = real.map((o) => {
+        const rarity = o.r || 'milspec';
+        return {
+          id: (o.w + '-' + o.s).replace(/\s+/g, '-').toLowerCase(),
+          weapon: o.w, skin: o.s, name: o.w + ' | ' + o.s,
+          rarity, color: (RARITIES[rarity] || RARITIES.milspec).color, image: o.i || null,
+        };
+      });
+      budgetEntries().forEach((b) => {
+        const key = (b.weapon + '|' + b.skin).toLowerCase();
+        if (!seen.has(key)) { seen.add(key); merged.push(b); }
+      });
+      return merged;
+    }
+    // last-resort text-only fallback
+    const base = FALLBACK.map(([weapon, name, rarity]) => ({
+      id: (weapon + '-' + name).replace(/\s+/g, '-').toLowerCase(),
+      weapon, skin: name, name: weapon + ' | ' + name,
+      rarity, color: RARITIES[rarity].color, image: null,
+    }));
+    const seen = new Set(base.map((s) => s.id));
+    budgetEntries().forEach((b) => { if (!seen.has(b.id)) base.push(b); });
+    return base;
+  }
+
+  function mergeBudgetSkins(list) {
+    const seen = new Set(list.map((s) => s.id));
+    budgetEntries().forEach((b) => {
+      if (seen.has(b.id)) return;
+      seen.add(b.id);
+      list.push(Object.assign({}, b, { price: priceFor(b.rarity, b.name, b.weapon, b.skin) }));
+    });
+    return list;
+  }
+
   return {
     RARITIES, TIER_ORDER, CASE_ODDS, WEARS, CASES,
-    priceFor, normalizeRarity, buildFallback, hashStr,
+    priceFor, normalizeRarity, buildFallback, mergeBudgetSkins, hashStr,
     // Reliable source: jsDelivr CDN mirror of ByMykel/CSGO-API (HTTPS + CORS).
     API_URL: 'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/skins.json',
     API_MIRRORS: [

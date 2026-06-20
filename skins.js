@@ -73,6 +73,7 @@ window.SKINS = (function () {
           price: D.priceFor(rarity, s.name, weapon, skin),
         });
       }
+      D.mergeBudgetSkins(list);
     } else {
       list = D.buildFallback().map((s) => ({ ...s, price: D.priceFor(s.rarity, s.name, s.weapon, s.skin) }));
     }
@@ -112,12 +113,32 @@ window.SKINS = (function () {
 
   function contentsForCase(caseDef) {
     const pool = poolForCase(caseDef);
+    const scale = scaleForCase(caseDef);
     const out = [];
-    ['gold', 'covert', 'classified', 'restricted', 'milspec'].forEach((r) => {
-      const arr = shuffle([...(pool[r] || [])]).slice(0, r === 'gold' ? 3 : r === 'covert' ? 4 : 6);
-      arr.forEach((s) => out.push(decorateForCase(s, r, caseDef)));
+    const limits = { gold: 5, covert: 7, classified: 8, restricted: 10, milspec: 12 };
+
+    ['gold', 'covert', 'classified', 'restricted', 'milspec'].forEach((tier) => {
+      const arr = pool[tier] || [];
+      if (!arr.length) return;
+      const skins = arr.slice(0, limits[tier] || 8);
+      skins.forEach((s) => {
+        D.WEARS.forEach((wear) => {
+          let market = Math.max(1, Math.round(s.price * wear.mult));
+          let price = E().sellPrice(market);
+          if (scale !== 1) {
+            market = Math.max(1, Math.round(market * scale));
+            price = Math.max(1, Math.round(price * scale));
+          }
+          out.push({
+            id: s.id + '-' + wear.short, name: s.name, weapon: s.weapon, skin: s.skin,
+            rarity: s.rarity, color: s.color, image: s.image,
+            wear: wear.short, wearName: wear.name, wearNameRu: wear.nameRu,
+            price, marketPrice: market, dropTier: tier,
+          });
+        });
+      });
     });
-    return out;
+    return out.sort((a, b) => a.price - b.price);
   }
 
   function expectedDrop(caseDef) {
@@ -130,7 +151,9 @@ window.SKINS = (function () {
     let arr = pool[r];
     if (!arr || !arr.length) {
       const [lo, hi] = E().tierPriceRange(caseDef.price, r);
-      arr = ALL.filter((s) => s.rarity === r && s.price >= lo && s.price <= hi);
+      const fill = E().TIER_FILL[r] || [r];
+      arr = ALL.filter((s) => fill.includes(s.rarity) && s.price >= lo && s.price <= hi);
+      if (!arr.length) arr = ALL.filter((s) => s.rarity !== 'gold' && s.price >= lo && s.price <= hi);
       if (!arr.length && pool.milspec && pool.milspec.length) arr = pool.milspec;
     }
     const base = E().pickSkin(arr, r) || arr[0];
@@ -168,7 +191,8 @@ window.SKINS = (function () {
     return {
       id: skin.id, name: skin.name, weapon: skin.weapon, skin: skin.skin,
       rarity: skin.rarity, color: skin.color, image: skin.image,
-      wear: wear.short, wearName: wear.name, price, marketPrice: market,
+      wear: wear.short, wearName: wear.name, wearNameRu: wear.nameRu,
+      price, marketPrice: market,
     };
   }
 

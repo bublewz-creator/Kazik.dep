@@ -87,7 +87,7 @@ window.CONTRACT = (function () {
     return {
       id: best.skin.id, name: best.skin.name, weapon: best.skin.weapon, skin: best.skin.skin,
       rarity: best.skin.rarity, color: best.skin.color, image: best.skin.image,
-      wear: w.short, wearName: w.name, price: best.sell, marketPrice: Math.round(best.skin.price * w.mult),
+      wear: w.short, wearName: w.name, wearNameRu: w.nameRu, price: best.sell, marketPrice: Math.round(best.skin.price * w.mult),
     };
   }
 

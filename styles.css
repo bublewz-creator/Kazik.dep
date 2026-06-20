@@ -278,9 +278,13 @@ main { width: 100%; max-width: 1300px; margin: 0 auto; padding: 28px 26px 50px; 
 .item-info { position: relative; z-index: 1; margin-top: 6px; }
 .item-weapon { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .item-name { font-size: 0.85rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.item-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
+.item-bottom { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 6px; }
 .item-price { font-size: 0.82rem; font-weight: 800; color: var(--gold); }
-.item-wear { font-size: 0.62rem; color: var(--muted-2); letter-spacing: 0.5px; }
+.item-wear { font-size: 0.68rem; color: var(--muted); line-height: 1.2; flex: 1 1 100%; }
+.item-wear-tag {
+  display: inline-block; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.4px;
+  padding: 1px 5px; border-radius: 4px; background: rgba(255,255,255,0.08); color: var(--muted-2);
+}
 .item-rare-badge {
   position: absolute; top: 8px; left: 8px; z-index: 2; font-size: 0.6rem; font-weight: 800;
   padding: 2px 7px; border-radius: 6px; background: rgba(0,0,0,0.4); color: var(--rc); text-transform: uppercase; letter-spacing: 0.5px;
@@ -322,6 +326,7 @@ main { width: 100%; max-width: 1300px; margin: 0 auto; padding: 28px 26px 50px; 
 .roul-item::before { content:""; position:absolute; inset:0; opacity:0.18; background: radial-gradient(120px 90px at 50% 0%, var(--rc), transparent 70%); }
 .roul-item img { position: relative; height: 86px; object-fit: contain; filter: drop-shadow(0 8px 12px rgba(0,0,0,0.5)); }
 .roul-item .ri-name { position: relative; font-size: 0.74rem; font-weight: 700; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.roul-item .ri-wear { position: relative; font-size: 0.62rem; text-align: center; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .roul-item .ri-price { position: relative; font-size: 0.72rem; text-align: center; color: var(--gold); font-weight: 700; }
 .roulette-glow { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 170px; height: 100%; z-index: 2; pointer-events: none; opacity: 0; transition: opacity 0.4s; background: radial-gradient(circle, var(--win-color, var(--accent-2)), transparent 70%); }
 .roulette-wrap.win .roulette-glow { opacity: 0.45; }
@@ -357,7 +362,8 @@ main { width: 100%; max-width: 1300px; margin: 0 auto; padding: 28px 26px 50px; 
 .odd-meta b { margin-left: auto; color: var(--text); font-variant-numeric: tabular-nums; }
 .odd-dot { width: 9px; height: 9px; border-radius: 50%; }
 .case-contents h3 { font-size: 1.15rem; }
-.contents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.contents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; max-height: 520px; overflow-y: auto; padding-right: 4px; }
+.contents-grid .item { font-size: 0.92rem; }
 
 /* ===== Upgrade ===== */
 .upgrade-layout { display: grid; grid-template-columns: 1fr 1.3fr 1fr; gap: 22px; align-items: center; margin-bottom: 30px; }

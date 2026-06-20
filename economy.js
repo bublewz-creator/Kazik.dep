@@ -21,12 +21,23 @@ window.ECONOMY = (function () {
 
   // Диапазоны цены дропа относительно цены кейса (FT, до износа).
   const TIER_BAND = {
-    milspec:    [0.32, 0.92],
-    restricted: [0.68, 1.28],
-    classified: [1.35, 2.85],
-    covert:     [3.5,  11.5],
-    gold:       [12,   72],
+    milspec:    [0.08, 0.88],
+    restricted: [0.55, 1.35],
+    classified: [1.15, 3.2],
+    covert:     [3.0,  12],
+    gold:       [10,   80],
   };
+
+  // Какие редкости могут попасть в пул каждого тира (по цене).
+  const TIER_FILL = {
+    milspec:    ['consumer', 'industrial', 'milspec'],
+    restricted: ['consumer', 'industrial', 'milspec', 'restricted'],
+    classified: ['milspec', 'restricted', 'classified'],
+    covert:     ['restricted', 'classified', 'covert'],
+    gold:       ['covert', 'gold'],
+  };
+
+  const MIN_POOL_SIZE = 12;
 
   // Степень «тяги» к дешёвым скинам внутри редкости (выше = чаще дешёвое).
   const TIER_CHEAP_BIAS = {
@@ -38,31 +49,40 @@ window.ECONOMY = (function () {
     return [Math.round(casePrice * b[0]), Math.round(casePrice * b[1])];
   }
 
-  /** Построить пул скинов для кейса — только в допустимых ценовых коридорах. */
+  /** Построить пул скинов для кейса — по ценовому коридору + несколько редкостей. */
   function buildCasePool(caseDef, allSkins) {
     const pool = {};
     const D = window.DATA;
     D.TIER_ORDER.forEach((r) => (pool[r] = []));
     D.CASE_ODDS.forEach(({ rarity }) => {
-      const [lo, hi] = tierPriceRange(caseDef.price, rarity);
-      pool[rarity] = allSkins.filter((s) => s.rarity === rarity && s.price >= lo && s.price <= hi);
-      // если мало — расширяем на ±15%, но не берём «легендарки» в мilspec
-      if (pool[rarity].length < 4) {
-        const pad = Math.round(caseDef.price * 0.15);
-        pool[rarity] = allSkins.filter((s) =>
-          s.rarity === rarity && s.price >= lo - pad && s.price <= hi + pad
-        );
+      const [lo0, hi0] = tierPriceRange(caseDef.price, rarity);
+      const fill = TIER_FILL[rarity] || [rarity];
+      let lo = lo0, hi = hi0;
+      let arr = [];
+
+      for (let pass = 0; pass < 4 && arr.length < MIN_POOL_SIZE; pass++) {
+        const pad = Math.round(caseDef.price * (0.12 * pass));
+        lo = Math.max(8, lo0 - pad);
+        hi = hi0 + pad;
+        arr = allSkins.filter((s) => fill.includes(s.rarity) && s.price >= lo && s.price <= hi);
       }
-      // последний фолбэк: ближайшие к середине коридора, но строго в пределах ±10%
-      if (!pool[rarity].length) {
-        const mid = (lo + hi) / 2;
-        const capLo = Math.round(lo * 0.9);
-        const capHi = Math.round(hi * 1.1);
-        pool[rarity] = allSkins
-          .filter((s) => s.rarity === rarity && s.price >= capLo && s.price <= capHi)
-          .sort((a, b) => Math.abs(a.price - mid) - Math.abs(b.price - mid))
-          .slice(0, 16);
+
+      // ещё расширяем: любой скин (кроме ★) по цене, если всё ещё мало
+      if (arr.length < MIN_POOL_SIZE && rarity !== 'gold') {
+        const pad = Math.round(caseDef.price * 0.35);
+        arr = allSkins.filter((s) => s.rarity !== 'gold' && s.price >= lo0 - pad && s.price <= hi0 + pad);
       }
+
+      // ★ только ножи/перчатки
+      if (arr.length < 4 && rarity === 'gold') {
+        arr = allSkins.filter((s) => s.rarity === 'gold' && s.price >= lo && s.price <= hi * 1.25);
+      }
+
+      // дедуп по id, сортировка: дешёвые первыми (для разнообразия в UI)
+      const seen = new Set();
+      pool[rarity] = arr
+        .filter((s) => { if (seen.has(s.id)) return false; seen.add(s.id); return true; })
+        .sort((a, b) => a.price - b.price);
     });
     return pool;
   }
@@ -158,7 +178,7 @@ window.ECONOMY = (function () {
   return {
     CASE_RTP, UPGRADE_HOUSE, UPGRADE_MAX_CHANCE, CONTRACT_MIN, CONTRACT_MAX, SELL_RATE,
     TOPUP_AMOUNT, TOPUP_COOLDOWN_MS, TOPUP_DAILY_MAX,
-    tierPriceRange, buildCasePool, pickSkin, pickWear,
+    tierPriceRange, buildCasePool, pickSkin, pickWear, TIER_FILL,
     upgradeChance, upgradeEV, contractTargetSum, sellPrice,
     caseExpectedDrop, canTopUp, recordTopUp,
   };

@@ -16,7 +16,9 @@ window.FX = (function () {
     opts = opts || {};
     const rcolor = item.color || '#8b95bf';
     const rname = (window.DATA.RARITIES[item.rarity] || {}).name || '';
-    const wear = item.wear ? `<span class="item-wear">${esc(item.wear)}</span>` : '';
+    const wearLabel = item.wearNameRu || item.wearName || item.wear || '';
+    const wearShort = item.wear ? `<span class="item-wear-tag">${esc(item.wear)}</span>` : '';
+    const wear = wearLabel ? `<span class="item-wear" title="${esc(wearLabel)}">${esc(wearLabel)}</span>${wearShort}` : '';
     const extra = opts.extra || '';
     return `
       <div class="item ${opts.selected ? 'selected' : ''}" style="--rc:${rcolor}" ${opts.attrs || ''}>
@@ -27,7 +29,8 @@ window.FX = (function () {
           <div class="item-weapon">${esc(item.weapon || '')}</div>
           <div class="item-name">${esc(item.skin || item.name)}</div>
           <div class="item-bottom">
-            <span class="item-price">${fmt(item.price)}${CUR}</span>${wear}
+            <span class="item-price">${fmt(item.price)}${CUR}</span>
+            ${wear}
           </div>
         </div>
         ${extra}

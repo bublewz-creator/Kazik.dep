@@ -58,7 +58,7 @@ window.CASES = (function () {
   function renderContents() {
     renderOdds();
     const list = S.contentsForCase(currentCase);
-    document.getElementById('contents-count').textContent = `(${list.length} примеров)`;
+    document.getElementById('contents-count').textContent = `(${list.length} вариантов · все степени износа)`;
     document.getElementById('contents-grid').innerHTML = list.map((s) => FX.itemCardHTML(s)).join('');
   }
 
@@ -104,9 +104,11 @@ window.CASES = (function () {
   }
 
   function roulItemHTML(it) {
+    const wear = it.wearNameRu || it.wearName || it.wear || '';
     return `<div class="roul-item" style="--rc:${it.color}">
       <img src="${FX.esc(it.image)}" onerror="this.src=SKINS.placeholder({color:'${it.color}',weapon:'${escq(it.weapon)}',skin:'${escq(it.skin)}'})"/>
       <div class="ri-name">${FX.esc(it.skin || it.name)}</div>
+      <div class="ri-wear">${FX.esc(wear)}</div>
       <div class="ri-price">${FX.fmt(it.price)}${FX.CUR}</div>
     </div>`;
   }
