@@ -16,10 +16,16 @@ window.CASES = (function () {
     });
   }
   function cardHTML(c) {
+    const feat = (S.featuredForCase ? S.featuredForCase(c) : []);
+    const imgs = feat.map((s, i) => `<img class="cf cf-${i}" src="${FX.esc(s.image)}" alt=""
+        onerror="this.src=SKINS.placeholder({color:'${s.color}',weapon:'${escq(s.weapon)}',skin:'${escq(s.skin)}'})"/>`).join('');
     return `
       <div class="case-card" data-id="${c.id}" style="--glow:${c.glow}">
         ${c.tag ? `<span class="case-tag">${FX.esc(c.tag)}</span>` : ''}
-        <div class="case-visual"><div class="case-box" style="--glow:${c.glow}"></div></div>
+        <div class="case-visual">
+          <div class="case-pedestal" style="--glow:${c.glow}"></div>
+          <div class="case-feats">${imgs}</div>
+        </div>
         <h3>${FX.esc(c.name)}</h3>
         <div class="case-meta">${FX.esc(c.desc).slice(0, 60)}…</div>
         <div class="case-open-row">
@@ -43,9 +49,24 @@ window.CASES = (function () {
   }
 
   function renderContents() {
+    renderOdds();
     const list = S.contentsForCase(currentCase);
     document.getElementById('contents-count').textContent = `(${list.length} примеров)`;
     document.getElementById('contents-grid').innerHTML = list.map((s) => FX.itemCardHTML(s)).join('');
+  }
+
+  function renderOdds() {
+    const box = document.getElementById('case-odds');
+    if (!box) return;
+    box.innerHTML = D.CASE_ODDS.slice().reverse().map((o) => {
+      const r = D.RARITIES[o.rarity];
+      const pct = (o.p * 100);
+      const label = pct >= 1 ? pct.toFixed(2) : pct.toFixed(2);
+      return `<div class="odd" title="${r.name}: ${label}%">
+        <div class="odd-bar"><span style="width:${Math.max(2, Math.sqrt(o.p) * 100)}%;background:${r.color}"></span></div>
+        <div class="odd-meta"><span class="odd-dot" style="background:${r.color}"></span>${r.name}<b>${label}%</b></div>
+      </div>`;
+    }).join('');
   }
 
   function syncQtyUI() {

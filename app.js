@@ -23,6 +23,10 @@
 
   loader.classList.add('hidden');
 
+  // refresh whichever data-dependent view is currently active (e.g. deep-linked)
+  const cur = (location.hash || '').replace('#', '');
+  if (['upgrade', 'contract', 'inventory'].indexOf(cur) >= 0) window.UI.showView(cur);
+
   // resume AudioContext on first interaction (browser autoplay policy)
   const resume = () => { try { (new (window.AudioContext || window.webkitAudioContext)()).resume(); } catch (e) {} document.removeEventListener('click', resume); };
   document.addEventListener('click', resume, { once: true });

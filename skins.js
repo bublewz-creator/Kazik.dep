@@ -28,15 +28,25 @@ window.SKINS = (function () {
     list.forEach((s) => { (byRarity[s.rarity] = byRarity[s.rarity] || []).push(s); });
   }
 
+  async function fetchJSON(url, timeout) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeout || 9000);
+    try {
+      const res = await fetch(url, { signal: ctrl.signal, cache: 'force-cache' });
+      clearTimeout(t);
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) { clearTimeout(t); return null; }
+  }
+
   async function load() {
     let raw = null;
-    try {
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 9000);
-      const res = await fetch(D.API_URL, { signal: ctrl.signal });
-      clearTimeout(t);
-      if (res.ok) raw = await res.json();
-    } catch (e) { /* offline -> fallback */ }
+    const sources = (D.API_MIRRORS && D.API_MIRRORS.length) ? D.API_MIRRORS : [D.API_URL];
+    for (const url of sources) {
+      raw = await fetchJSON(url, 9000);
+      if (Array.isArray(raw) && raw.length) break;
+      raw = null;
+    }
 
     let list;
     if (Array.isArray(raw) && raw.length) {
@@ -87,6 +97,16 @@ window.SKINS = (function () {
       }
     });
     return pool;
+  }
+
+  // top skins to showcase on a case card
+  function featuredForCase(caseDef) {
+    const pool = poolForCase(caseDef);
+    const out = [];
+    ['gold', 'covert', 'classified', 'restricted'].forEach((r) => {
+      if (pool[r] && pool[r].length) out.push(pool[r][Math.floor(Math.random() * pool[r].length)]);
+    });
+    return out.slice(0, 3);
   }
 
   // representative contents list for display (a few per rarity)
@@ -151,7 +171,7 @@ window.SKINS = (function () {
   }
 
   return {
-    load, isReady, all, poolForCase, contentsForCase, rollFromCase,
+    load, isReady, all, poolForCase, contentsForCase, featuredForCase, rollFromCase,
     decorate, skinsNearPrice, randomDrop, placeholder, shuffle,
     byRarity: () => byRarity,
   };

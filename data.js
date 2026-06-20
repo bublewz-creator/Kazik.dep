@@ -64,7 +64,7 @@ window.DATA = (function () {
   // Map API rarity names -> our tier keys.
   function normalizeRarity(apiRarityName, categoryName) {
     const c = (categoryName || '').toLowerCase();
-    if (c.includes('knife') || c.includes('glove')) return 'gold';
+    if (c.includes('knife') || c.includes('knive') || c.includes('glove')) return 'gold';
     const n = (apiRarityName || '').toLowerCase();
     if (n.includes('contraband') || n.includes('extraordinary') || n.includes('exceed')) return 'gold';
     if (n.includes('covert')) return 'covert';
@@ -100,20 +100,39 @@ window.DATA = (function () {
   ];
 
   function buildFallback() {
+    // Prefer the embedded real-skin dataset (with real images) loaded from skins-data.js
+    const real = (typeof window !== 'undefined' && Array.isArray(window.FALLBACK_SKINS)) ? window.FALLBACK_SKINS : null;
+    if (real && real.length) {
+      return real.map((o) => {
+        const rarity = o.r || 'milspec';
+        return {
+          id: (o.w + '-' + o.s).replace(/\s+/g, '-').toLowerCase(),
+          weapon: o.w,
+          skin: o.s,
+          name: o.w + ' | ' + o.s,
+          rarity,
+          color: (RARITIES[rarity] || RARITIES.milspec).color,
+          image: o.i || null,
+        };
+      });
+    }
+    // last-resort text-only fallback
     return FALLBACK.map(([weapon, name, rarity]) => ({
       id: (weapon + '-' + name).replace(/\s+/g, '-').toLowerCase(),
-      weapon,
-      skin: name,
-      name: weapon + ' | ' + name,
-      rarity,
-      color: RARITIES[rarity].color,
-      image: null, // placeholder generated in skins.js
+      weapon, skin: name, name: weapon + ' | ' + name,
+      rarity, color: RARITIES[rarity].color, image: null,
     }));
   }
 
   return {
     RARITIES, TIER_ORDER, CASE_ODDS, WEARS, CASES,
     priceFor, normalizeRarity, buildFallback, hashStr,
-    API_URL: 'https://bymykel.github.io/CSGO-API/api/en/skins.json',
+    // Reliable source: jsDelivr CDN mirror of ByMykel/CSGO-API (HTTPS + CORS).
+    API_URL: 'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/skins.json',
+    API_MIRRORS: [
+      'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/skins.json',
+      'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/skins.json',
+      'https://bymykel.github.io/CSGO-API/api/en/skins.json',
+    ],
   };
 })();
