@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NEONDROP — CS2 Cases &amp; Upgrade</title>
+  <meta name="description" content="NEONDROP — открывай кейсы CS2, апгрейди скины и собирай инвентарь. Демо-проект." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%8E%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- ===== Header ===== -->
+  <header class="app-header">
+    <div class="header-inner">
+      <a class="brand" href="#cases" data-nav="cases">
+        <span class="brand-mark">◆</span>
+        <span class="brand-text">NEON<span>DROP</span></span>
+      </a>
+
+      <nav class="main-nav" id="main-nav">
+        <a href="#cases" data-nav="cases" class="nav-link active"><i data-ico="case"></i>Кейсы</a>
+        <a href="#upgrade" data-nav="upgrade" class="nav-link"><i data-ico="up"></i>Апгрейд</a>
+        <a href="#contract" data-nav="contract" class="nav-link"><i data-ico="contract"></i>Контракт</a>
+        <a href="#inventory" data-nav="inventory" class="nav-link"><i data-ico="bag"></i>Инвентарь</a>
+      </nav>
+
+      <div class="header-right">
+        <button class="bonus-btn" id="bonus-btn" title="Бесплатный бонус раз в день">
+          <span class="gift">🎁</span><span class="bonus-label">Бонус</span>
+        </button>
+        <div class="balance" id="balance-pill">
+          <span class="coin">◎</span>
+          <span class="balance-value" id="balance-value">0</span>
+          <button class="add-funds" id="add-funds" title="Пополнить демо-баланс">+</button>
+        </div>
+        <button class="burger" id="burger" aria-label="Меню">☰</button>
+      </div>
+    </div>
+
+    <!-- Live drops ticker -->
+    <div class="ticker" id="ticker">
+      <div class="ticker-label">LIVE DROP</div>
+      <div class="ticker-track" id="ticker-track"></div>
+    </div>
+  </header>
+
+  <main id="app">
+    <!-- ===== Cases list ===== -->
+    <section class="view" id="view-cases">
+      <div class="hero">
+        <div class="hero-bg"></div>
+        <div class="hero-content">
+          <h1 class="hero-title">Открывай <span class="grad">кейсы</span>.<br />Апгрейди <span class="grad2">скины</span>.</h1>
+          <p class="hero-sub">Лутай ножи и перчатки, прокачивай инвентарь и испытай удачу в честной (provably-fair) механике.</p>
+          <div class="hero-actions">
+            <button class="btn btn-primary" data-scroll="cases-grid">Открыть кейс</button>
+            <button class="btn btn-ghost" data-nav="upgrade">Перейти к апгрейду</button>
+          </div>
+          <div class="hero-stats" id="hero-stats"></div>
+        </div>
+      </div>
+
+      <div class="section-head">
+        <h2>Кейсы</h2>
+        <div class="filters" id="case-filters"></div>
+      </div>
+      <div class="cases-grid" id="cases-grid"></div>
+    </section>
+
+    <!-- ===== Case open ===== -->
+    <section class="view hidden" id="view-open">
+      <button class="back-link" data-nav="cases">← Назад к кейсам</button>
+      <div class="open-head">
+        <h2 id="open-case-name">Кейс</h2>
+        <p class="muted" id="open-case-desc"></p>
+      </div>
+
+      <div class="roulette-wrap" id="roulette-wrap">
+        <div class="roulette-pointer"></div>
+        <div class="roulette" id="roulette"></div>
+        <div class="roulette-glow"></div>
+      </div>
+
+      <div class="open-controls">
+        <div class="qty-switch" id="qty-switch">
+          <button data-qty="1" class="active">x1</button>
+          <button data-qty="2">x2</button>
+          <button data-qty="3">x3</button>
+          <button data-qty="5">x5</button>
+        </div>
+        <button class="btn btn-primary big" id="open-btn">
+          <span class="open-price" id="open-price">Открыть</span>
+        </button>
+        <label class="fast-toggle"><input type="checkbox" id="fast-toggle" /> Быстро</label>
+      </div>
+
+      <div class="case-contents">
+        <h3>Содержимое кейса <span class="muted" id="contents-count"></span></h3>
+        <div class="contents-grid" id="contents-grid"></div>
+      </div>
+    </section>
+
+    <!-- ===== Upgrade ===== -->
+    <section class="view hidden" id="view-upgrade">
+      <div class="upgrade-layout">
+        <div class="upgrade-col">
+          <h3>Твой предмет</h3>
+          <div class="slot" id="up-source-slot">
+            <div class="slot-empty">Выбери предмет из инвентаря снизу</div>
+          </div>
+        </div>
+
+        <div class="upgrade-center">
+          <div class="up-wheel-wrap">
+            <svg class="up-wheel" viewBox="0 0 220 220" id="up-wheel">
+              <circle class="up-track" cx="110" cy="110" r="96" />
+              <circle class="up-progress" cx="110" cy="110" r="96" id="up-progress" />
+            </svg>
+            <div class="up-needle" id="up-needle"></div>
+            <div class="up-center" id="up-center">
+              <div class="up-chance" id="up-chance">—</div>
+              <div class="up-chance-label">шанс</div>
+            </div>
+          </div>
+          <div class="up-mult" id="up-mult">x0.00</div>
+          <button class="btn btn-primary big" id="upgrade-btn" disabled>Выбери предметы</button>
+        </div>
+
+        <div class="upgrade-col">
+          <h3>Хочешь получить</h3>
+          <div class="slot" id="up-target-slot">
+            <div class="slot-empty">Выбери цель справа</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="upgrade-pools">
+        <div class="pool">
+          <div class="pool-head"><h4>Инвентарь (твои скины)</h4><span class="muted" id="up-inv-count"></span></div>
+          <div class="pool-grid" id="up-inventory"></div>
+        </div>
+        <div class="pool">
+          <div class="pool-head"><h4>Цель апгрейда</h4>
+            <input type="range" id="up-target-range" min="0" max="100" value="40" />
+          </div>
+          <div class="pool-grid" id="up-targets"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Contract (trade-up) ===== -->
+    <section class="view hidden" id="view-contract">
+      <div class="open-head">
+        <h2>Контракт обмена</h2>
+        <p class="muted">Закинь 3 скина одной редкости — получи один на ступень выше. Чем дороже вложение, тем лучше результат.</p>
+      </div>
+      <div class="contract-slots" id="contract-slots"></div>
+      <div class="contract-summary">
+        <div class="contract-info" id="contract-info">Выбрано 0 / 3</div>
+        <button class="btn btn-primary big" id="contract-btn" disabled>Заключить контракт</button>
+      </div>
+      <div class="pool">
+        <div class="pool-head"><h4>Инвентарь</h4><span class="muted" id="contract-inv-count"></span></div>
+        <div class="pool-grid" id="contract-inventory"></div>
+      </div>
+    </section>
+
+    <!-- ===== Inventory ===== -->
+    <section class="view hidden" id="view-inventory">
+      <div class="section-head">
+        <h2>Инвентарь</h2>
+        <div class="inv-tools">
+          <span class="inv-total" id="inv-total"></span>
+          <select id="inv-sort">
+            <option value="new">Сначала новые</option>
+            <option value="price-desc">Дороже</option>
+            <option value="price-asc">Дешевле</option>
+            <option value="rarity">По редкости</option>
+          </select>
+          <button class="btn btn-ghost danger" id="sell-all">Продать всё</button>
+        </div>
+      </div>
+      <div class="inventory-grid" id="inventory-grid"></div>
+      <div class="empty-state hidden" id="inv-empty">
+        <div class="empty-emoji">📦</div>
+        <p>Инвентарь пуст. Открой кейс, чтобы получить первый скин!</p>
+        <button class="btn btn-primary" data-nav="cases">К кейсам</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== Reward modal ===== -->
+  <div class="modal-overlay hidden" id="reward-modal">
+    <div class="reward-card" id="reward-card">
+      <div class="reward-glow" id="reward-glow"></div>
+      <h3 class="reward-title">Твой дроп!</h3>
+      <div class="reward-items" id="reward-items"></div>
+      <div class="reward-actions">
+        <button class="btn btn-ghost" id="reward-sell">Продать всё (<span id="reward-sell-sum">0</span>◎)</button>
+        <button class="btn btn-primary" id="reward-keep">Забрать в инвентарь</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-wrap" id="toast-wrap"></div>
+  <div class="loader-overlay" id="loader-overlay"><div class="loader-spin"></div><div class="loader-text">Загружаем арсенал CS2…</div></div>
+
+  <footer class="app-footer">
+    <p>NEONDROP — демо-проект. Виртуальная валюта, реальные ставки и вывод отсутствуют. Сделано для развлечения и обучения.</p>
+  </footer>
+
+  <script src="js/icons.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/skins.js"></script>
+  <script src="js/effects.js"></script>
+  <script src="js/cases.js"></script>
+  <script src="js/upgrade.js"></script>
+  <script src="js/contract.js"></script>
+  <script src="js/inventory.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
