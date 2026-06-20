@@ -1,7 +1,6 @@
 /* ============ NEONDROP — upgrade ============ */
 window.UPGRADE = (function () {
-  const D = window.DATA, S = window.SKINS, St = window.STATE;
-  const HOUSE = 0.92;     // house edge factor
+  const D = window.DATA, S = window.SKINS, St = window.STATE, E = window.ECONOMY;
   const C = 603.2;        // circle circumference (r=96)
   let sources = [];       // uids
   let target = null;      // decorated skin instance
@@ -81,26 +80,30 @@ window.UPGRADE = (function () {
   function chance() {
     const sv = srcValue();
     if (!sv || !target || !target.price) return 0;
-    return Math.max(0.02, Math.min(0.92, (sv / target.price) * HOUSE));
+    return E.upgradeChance(sv, target.price);
   }
 
   function recompute() {
     const ch = chance();
     const sv = srcValue();
     const pct = Math.round(ch * 100);
+    const ev = Math.round(E.upgradeEV(sv, target ? target.price : 0));
     document.getElementById('up-chance').textContent = ch ? pct + '%' : '—';
-    document.getElementById('up-mult').textContent = (sv && target) ? 'x' + (target.price / sv).toFixed(2) : 'x0.00';
+    document.getElementById('up-mult').textContent = (sv && target) ? 'x' + (target.price / sv).toFixed(2) + (ev ? ` · EV≈${FX.fmt(ev)}${FX.CUR}` : '') : 'x0.00';
     document.getElementById('up-progress').style.strokeDashoffset = C * (1 - ch);
     const btn = document.getElementById('upgrade-btn');
-    const ok = sv > 0 && target && !busy;
+    const minTarget = sv * 1.05;
+    const targetOk = target && target.price >= minTarget;
+    const ok = sv > 0 && targetOk && !busy;
     btn.disabled = !ok;
-    btn.textContent = ok ? `Апгрейд (${pct}%)` : (sources.length ? 'Выбери цель' : 'Выбери предметы');
+    btn.textContent = ok ? `Апгрейд (${pct}%)` : (target && !targetOk ? 'Цель должна быть дороже ставки' : (sources.length ? 'Выбери цель' : 'Выбери предметы'));
   }
 
   function run() {
     if (busy) return;
+    const sv = srcValue();
     const ch = chance();
-    if (!ch || !target) return;
+    if (!ch || !target || target.price < sv * 1.05) return;
     busy = true;
     document.getElementById('upgrade-btn').disabled = true;
     FX.sound.open();

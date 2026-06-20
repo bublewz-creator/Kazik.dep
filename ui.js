@@ -64,7 +64,7 @@ window.UI = (function () {
     if (promo) {
       promo.classList.toggle('claimed', !can);
       const sub = document.getElementById('promo-bonus-sub');
-      if (sub) sub.textContent = can ? 'Забери +1 000 ₽' : 'Уже получен сегодня';
+      if (sub) sub.textContent = can ? 'Забери +800 ₽' : 'Уже получен сегодня';
     }
   }
   function claimBonus() {
@@ -74,7 +74,7 @@ window.UI = (function () {
       FX.toast(`Бонус будет доступен через ${h}ч ${m}м`, 'bad');
       return;
     }
-    const amount = 1000;
+    const amount = 800;
     St.claimBonus(amount);
     FX.confetti(80, ['#ffb649', '#fff']);
     FX.sound.win();
@@ -100,7 +100,12 @@ window.UI = (function () {
     const promo = document.getElementById('promo-bonus');
     if (promo) promo.addEventListener('click', claimBonus);
     document.getElementById('add-funds').addEventListener('click', () => {
-      St.addBalance(5000); FX.sound.coin(); FX.toast('+5 000 ₽ демо-баланса', 'good');
+      const check = E.canTopUp(St.getTopUpState());
+      if (!check.ok) { FX.toast(check.reason, 'bad'); return; }
+      St.addBalance(E.TOPUP_AMOUNT);
+      St.recordTopUp();
+      FX.sound.coin();
+      FX.toast(`+${FX.fmt(E.TOPUP_AMOUNT)}${FX.CUR} (осталось ${E.TOPUP_DAILY_MAX - (St.getTopUpState().topUpCount || 0)} сегодня)`, 'good');
     });
 
     // balance reactive

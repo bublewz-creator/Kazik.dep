@@ -1,13 +1,16 @@
 /* ============ NEONDROP — persistent state ============ */
 window.STATE = (function () {
-  const KEY = 'neondrop_save_v2';
-  const START_BALANCE = 10000;
+  const KEY = 'neondrop_save_v3';
+  const START_BALANCE = 8000;
 
   const def = {
     balance: START_BALANCE,
-    inventory: [],          // { uid, id, name, weapon, skin, rarity, color, image, wear, price, ts }
+    inventory: [],
     lastBonus: 0,
-    stats: { opened: 0, upgrades: 0, bestDrop: 0, contracts: 0 },
+    lastTopUp: 0,
+    topUpDay: 0,
+    topUpCount: 0,
+    stats: { opened: 0, upgrades: 0, bestDrop: 0, contracts: 0, spent: 0, earned: 0 },
   };
 
   let data = load();
@@ -30,16 +33,21 @@ window.STATE = (function () {
   function on(evt, cb) { (listeners[evt] = listeners[evt] || []).push(cb); }
   function emit(evt, payload) { (listeners[evt] || []).forEach((cb) => cb(payload)); }
 
-  // ---- balance ----
   function getBalance() { return data.balance; }
   function canAfford(n) { return data.balance >= n; }
   function addBalance(n) {
+    if (n > 0) data.stats.earned = (data.stats.earned || 0) + n;
     data.balance = Math.max(0, Math.round((data.balance + n) * 100) / 100);
     save(); emit('balance', data.balance);
   }
-  function setBalance(n) { data.balance = Math.max(0, Math.round(n)); save(); emit('balance', data.balance); }
+  function spend(n) {
+    if (n <= 0 || !canAfford(n)) return false;
+    data.balance -= n;
+    data.stats.spent = (data.stats.spent || 0) + n;
+    save(); emit('balance', data.balance);
+    return true;
+  }
 
-  // ---- inventory ----
   function getInventory() { return data.inventory; }
   function addItem(item) {
     const uid = 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -66,18 +74,21 @@ window.STATE = (function () {
   function findItem(uid) { return data.inventory.find((i) => i.uid === uid); }
   function clearInventory() { data.inventory = []; save(); emit('inventory', data.inventory); }
 
-  // ---- stats / bonus ----
   function bumpStat(key, by = 1) { data.stats[key] = (data.stats[key] || 0) + by; save(); }
   function getStats() { return data.stats; }
+  function getTopUpState() { return { lastTopUp: data.lastTopUp, topUpDay: data.topUpDay, topUpCount: data.topUpCount }; }
+  function recordTopUp() { window.ECONOMY.recordTopUp(data); save(); }
+
   function canClaimBonus() { return Date.now() - data.lastBonus > 8 * 60 * 60 * 1000; }
   function nextBonusIn() { return Math.max(0, 8 * 60 * 60 * 1000 - (Date.now() - data.lastBonus)); }
   function claimBonus(amount) { data.lastBonus = Date.now(); addBalance(amount); save(); }
 
   return {
     on, emit,
-    getBalance, canAfford, addBalance, setBalance,
+    getBalance, canAfford, addBalance, spend,
     getInventory, addItem, removeItem, removeMany, findItem, clearInventory,
-    bumpStat, getStats, canClaimBonus, nextBonusIn, claimBonus,
-    START_BALANCE,
+    bumpStat, getStats, getTopUpState, recordTopUp,
+    canClaimBonus, nextBonusIn, claimBonus,
+    START_BALANCE, _data: () => data,
   };
 })();

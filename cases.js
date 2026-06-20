@@ -1,6 +1,6 @@
 /* ============ NEONDROP — cases & roulette ============ */
 window.CASES = (function () {
-  const D = window.DATA, S = window.SKINS, St = window.STATE;
+  const D = window.DATA, S = window.SKINS, St = window.STATE, E = window.ECONOMY;
   const ITEM_W = 160; // 150 width + 10 gap
   let currentCase = null;
   let qty = 1;
@@ -9,7 +9,14 @@ window.CASES = (function () {
   // ---------- render cases grid ----------
   function renderGrid(filter) {
     const grid = document.getElementById('cases-grid');
-    const list = D.CASES.filter((c) => !filter || filter === 'all' || c.tag.toLowerCase() === filter || (filter === 'cheap' && c.price <= 60) || (filter === 'premium' && c.price >= 600));
+    const list = D.CASES.filter((c) => {
+      if (!filter || filter === 'all') return true;
+      const tag = (c.tag || '').toLowerCase();
+      if (filter === 'hot') return tag === 'hot';
+      if (filter === 'gold') return tag === 'gold' || tag === '★' || c.price >= 600;
+      if (filter === 'cheap') return c.price <= 99;
+      return tag === filter;
+    });
     grid.innerHTML = (list.length ? list : D.CASES).map(cardHTML).join('');
     grid.querySelectorAll('.case-card').forEach((el) => {
       el.addEventListener('click', () => openCaseView(el.dataset.id));
@@ -57,16 +64,23 @@ window.CASES = (function () {
 
   function renderOdds() {
     const box = document.getElementById('case-odds');
-    if (!box) return;
-    box.innerHTML = D.CASE_ODDS.slice().reverse().map((o) => {
+    if (!box || !currentCase) return;
+    const ev = S.expectedDrop(currentCase);
+    const rtp = Math.round((ev / currentCase.price) * 100);
+    const oddsHtml = D.CASE_ODDS.slice().reverse().map((o) => {
       const r = D.RARITIES[o.rarity];
       const pct = (o.p * 100);
-      const label = pct >= 1 ? pct.toFixed(2) : pct.toFixed(2);
+      const label = pct.toFixed(2);
       return `<div class="odd" title="${r.name}: ${label}%">
         <div class="odd-bar"><span style="width:${Math.max(2, Math.sqrt(o.p) * 100)}%;background:${r.color}"></span></div>
         <div class="odd-meta"><span class="odd-dot" style="background:${r.color}"></span>${r.name}<b>${label}%</b></div>
       </div>`;
     }).join('');
+    box.innerHTML = `
+      <div class="ev-banner">
+        <span>Средний дроп ≈ <b>${FX.fmt(ev)}${FX.CUR}</b></span>
+        <span class="ev-rtp">RTP ~${rtp}% · казино забирает ${100 - rtp}% в долгую</span>
+      </div>${oddsHtml}`;
   }
 
   function syncQtyUI() {
@@ -103,7 +117,7 @@ window.CASES = (function () {
     if (spinning) return;
     const total = currentCase.price * qty;
     if (!St.canAfford(total)) { FX.toast('Недостаточно средств. Пополни баланс или открой бонус.', 'bad'); FX.sound.lose(); return; }
-    St.addBalance(-total);
+    St.spend(total);
     FX.sound.open();
     spinning = true;
     document.getElementById('open-btn').disabled = true;

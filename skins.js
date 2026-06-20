@@ -1,11 +1,13 @@
 /* ============ NEONDROP — skins repository ============ */
 window.SKINS = (function () {
   const D = window.DATA;
-  let ALL = [];                 // all skins with computed price + image
-  const byRarity = {};          // rarity -> [skins]
+  const E = () => window.ECONOMY;
+  let ALL = [];
+  const byRarity = {};
+  const casePools = {}; // caseId -> pools cache
+  const caseScale = {}; // caseId -> RTP calibration multiplier
   let ready = false;
 
-  // ----- placeholder image (SVG data URI) when no real image available -----
   function placeholder(skin) {
     const c = skin.color || '#6c5cff';
     const label = (skin.skin || skin.name || '').slice(0, 16);
@@ -26,6 +28,8 @@ window.SKINS = (function () {
     ALL = list;
     D.TIER_ORDER.forEach((r) => (byRarity[r] = []));
     list.forEach((s) => { (byRarity[s.rarity] = byRarity[s.rarity] || []).push(s); });
+    Object.keys(casePools).forEach((k) => delete casePools[k]);
+    Object.keys(caseScale).forEach((k) => delete caseScale[k]);
   }
 
   async function fetchJSON(url, timeout) {
@@ -73,7 +77,6 @@ window.SKINS = (function () {
       list = D.buildFallback().map((s) => ({ ...s, price: D.priceFor(s.rarity, s.name, s.weapon, s.skin) }));
     }
 
-    // ensure every skin has an image
     list.forEach((s) => { if (!s.image) s.image = placeholder(s); });
     index(list);
     ready = true;
@@ -83,23 +86,21 @@ window.SKINS = (function () {
   function isReady() { return ready; }
   function all() { return ALL; }
 
-  // pool for a case = skins within its value band, grouped by rarity
   function poolForCase(caseDef) {
-    const [lo, hi] = caseDef.band;
-    const pool = {};
-    D.TIER_ORDER.forEach((r) => (pool[r] = []));
-    ALL.forEach((s) => { if (s.price >= lo && s.price <= hi) pool[s.rarity].push(s); });
-    // guarantee non-empty rarities used by odds: borrow nearest if empty
-    D.CASE_ODDS.forEach(({ rarity }) => {
-      if (!pool[rarity].length) {
-        const sorted = [...ALL].filter((s) => s.rarity === rarity).sort((a, b) => Math.abs(a.price - hi) - Math.abs(b.price - hi));
-        pool[rarity] = sorted.slice(0, 12);
-      }
-    });
+    if (casePools[caseDef.id]) return casePools[caseDef.id];
+    const pool = E().buildCasePool(caseDef, ALL);
+    casePools[caseDef.id] = pool;
+    const ev = E().caseExpectedDrop(caseDef, pool);
+    const target = caseDef.price * E().CASE_RTP;
+    caseScale[caseDef.id] = ev > caseDef.price * 0.05 ? target / ev : E().CASE_RTP;
     return pool;
   }
 
-  // top skins to showcase on a case card
+  function scaleForCase(caseDef) {
+    poolForCase(caseDef);
+    return caseScale[caseDef.id] || 1;
+  }
+
   function featuredForCase(caseDef) {
     const pool = poolForCase(caseDef);
     const out = [];
@@ -109,25 +110,37 @@ window.SKINS = (function () {
     return out.slice(0, 3);
   }
 
-  // representative contents list for display (a few per rarity)
   function contentsForCase(caseDef) {
     const pool = poolForCase(caseDef);
     const out = [];
     ['gold', 'covert', 'classified', 'restricted', 'milspec'].forEach((r) => {
-      const arr = shuffle([...pool[r]]).slice(0, r === 'gold' ? 3 : r === 'covert' ? 4 : 6);
-      arr.forEach((s) => out.push(s));
+      const arr = shuffle([...(pool[r] || [])]).slice(0, r === 'gold' ? 3 : r === 'covert' ? 4 : 6);
+      arr.forEach((s) => out.push(decorateForCase(s, r, caseDef)));
     });
     return out;
   }
 
-  // weighted rarity roll, then random skin of that rarity
+  function expectedDrop(caseDef) {
+    return Math.round(E().caseExpectedDrop(caseDef, poolForCase(caseDef)) * scaleForCase(caseDef));
+  }
+
   function rollFromCase(caseDef) {
     const pool = poolForCase(caseDef);
     const r = pickRarity();
     let arr = pool[r];
-    if (!arr || !arr.length) arr = pool.milspec.length ? pool.milspec : ALL;
-    const base = arr[Math.floor(Math.random() * arr.length)];
-    return decorate(base);
+    if (!arr || !arr.length) {
+      const [lo, hi] = E().tierPriceRange(caseDef.price, r);
+      arr = ALL.filter((s) => s.rarity === r && s.price >= lo && s.price <= hi);
+      if (!arr.length && pool.milspec && pool.milspec.length) arr = pool.milspec;
+    }
+    const base = E().pickSkin(arr, r) || arr[0];
+    const item = decorate(base, r);
+    const scale = scaleForCase(caseDef);
+    if (scale !== 1) {
+      item.price = Math.max(1, Math.round(item.price * scale));
+      item.marketPrice = Math.max(1, Math.round(item.marketPrice * scale));
+    }
+    return item;
   }
 
   function pickRarity() {
@@ -137,24 +150,34 @@ window.SKINS = (function () {
     return 'milspec';
   }
 
-  // attach a random wear + final price (instance of a skin)
-  function decorate(skin) {
-    const wear = D.WEARS[Math.floor(Math.random() * D.WEARS.length)];
-    const price = Math.max(1, Math.round(skin.price * wear.mult));
+  function decorateForCase(skin, rarityHint, caseDef) {
+    const item = decorate(skin, rarityHint);
+    const scale = scaleForCase(caseDef);
+    if (scale !== 1) {
+      item.price = Math.max(1, Math.round(item.price * scale));
+      item.marketPrice = Math.max(1, Math.round(item.marketPrice * scale));
+    }
+    return item;
+  }
+
+  function decorate(skin, rarityHint) {
+    const r = rarityHint || skin.rarity;
+    const wear = E().pickWear(r);
+    const market = Math.max(1, Math.round(skin.price * wear.mult));
+    const price = E().sellPrice(market); // цена в инвентаре = после комиссии при продаже
     return {
       id: skin.id, name: skin.name, weapon: skin.weapon, skin: skin.skin,
       rarity: skin.rarity, color: skin.color, image: skin.image,
-      wear: wear.short, wearName: wear.name, price,
+      wear: wear.short, wearName: wear.name, price, marketPrice: market,
     };
   }
 
-  // pick N random skins near a target price (for upgrade targets)
   function skinsNearPrice(price, count, tolerance) {
-    const tol = tolerance || 0.6;
-    const lo = price * (1 - tol), hi = price * (1 + tol * 2);
+    const tol = tolerance || 0.45;
+    const lo = price * (1 - tol), hi = price * (1 + tol);
     let candidates = ALL.filter((s) => s.price >= lo && s.price <= hi);
-    if (candidates.length < count) candidates = ALL;
-    return shuffle(candidates).slice(0, count).map(decorate);
+    if (candidates.length < count) candidates = ALL.slice().sort((a, b) => Math.abs(a.price - price) - Math.abs(b.price - price));
+    return shuffle(candidates).slice(0, count).map((s) => decorate(s));
   }
 
   function shuffle(a) {
@@ -172,7 +195,7 @@ window.SKINS = (function () {
 
   return {
     load, isReady, all, poolForCase, contentsForCase, featuredForCase, rollFromCase,
-    decorate, skinsNearPrice, randomDrop, placeholder, shuffle,
+    decorate, skinsNearPrice, randomDrop, placeholder, shuffle, expectedDrop,
     byRarity: () => byRarity,
   };
 })();
