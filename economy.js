@@ -5,7 +5,7 @@ window.ECONOMY = (function () {
 
   // Апгрейд: шанс = (ставка / цель) × HOUSE, но не выше MAX_CHANCE.
   const UPGRADE_HOUSE = 0.78;
-  const UPGRADE_MAX_CHANCE = 0.85;
+  const UPGRADE_MAX_CHANCE = 0.75;
 
   // Контракт: результат 62–88% от суммы вложенных скинов (среднее ~75%).
   const CONTRACT_MIN = 0.62;
@@ -123,6 +123,13 @@ window.ECONOMY = (function () {
     return Math.max(0.01, Math.min(UPGRADE_MAX_CHANCE, (sourceValue / targetValue) * UPGRADE_HOUSE));
   }
 
+  /** Цена цели для желаемого шанса (обратная формула). */
+  function upgradeTargetPrice(sourceValue, desiredChance) {
+    if (!sourceValue || !desiredChance) return 0;
+    const ch = Math.min(UPGRADE_MAX_CHANCE, Math.max(0.02, desiredChance));
+    return (sourceValue * UPGRADE_HOUSE) / ch;
+  }
+
   /** Ожидаемая стоимость апгрейда для игрока (EV). */
   function upgradeEV(sourceValue, targetValue) {
     const ch = upgradeChance(sourceValue, targetValue);
@@ -181,7 +188,7 @@ window.ECONOMY = (function () {
     CASE_RTP, UPGRADE_HOUSE, UPGRADE_MAX_CHANCE, CONTRACT_MIN, CONTRACT_MAX, SELL_RATE,
     TOPUP_AMOUNT, TOPUP_COOLDOWN_MS, TOPUP_DAILY_MAX,
     tierPriceRange, buildCasePool, pickSkin, pickWear, TIER_FILL,
-    upgradeChance, upgradeEV, contractTargetSum, sellPrice,
+    upgradeChance, upgradeEV, upgradeTargetPrice, contractTargetSum, sellPrice,
     caseExpectedDrop, canTopUp, recordTopUp,
   };
 })();

@@ -230,51 +230,57 @@ window.SKINS = (function () {
     };
   }
 
-  function decorateForUpgrade(skin, targetPrice) {
-    let bestWear = D.WEARS[2];
-    let bestPrice = 0;
-    let bestMarket = 0;
-    let bestDiff = Infinity;
-    D.WEARS.forEach((wear) => {
-      const market = Math.max(1, Math.round(skin.price * wear.mult));
-      const price = E().sellPrice(market);
-      const diff = Math.abs(price - targetPrice);
-      if (diff < bestDiff) {
-        bestDiff = diff;
-        bestWear = wear;
-        bestPrice = price;
-        bestMarket = market;
-      }
-    });
+  function catalogSellPrice(skin) {
+    return E().sellPrice(Math.max(1, Math.round(skin.price)));
+  }
+
+  function decorateForUpgrade(skin) {
+    const wear = D.WEARS.find((w) => w.short === 'FT') || D.WEARS[2];
+    const market = Math.max(1, Math.round(skin.price * wear.mult));
+    const price = E().sellPrice(market);
     return {
       id: skin.id, name: skin.name, weapon: skin.weapon, skin: skin.skin,
       rarity: skin.rarity, color: skin.color, image: ensureImage(skin),
-      wear: bestWear.short, wearName: bestWear.name, wearNameRu: bestWear.nameRu,
-      price: bestPrice, marketPrice: bestMarket,
+      wear: wear.short, wearName: wear.name, wearNameRu: wear.nameRu,
+      price, marketPrice: market,
     };
   }
 
-  /** Пул целей апгрейда: скины с ценой около idealPrice, от дешёвых к дорогим. */
-  function upgradePool(idealPrice, count, doShuffle) {
-    count = count || 24;
-    if (!ALL.length || !idealPrice) return [];
-    const band = idealPrice * 0.55;
-    let bases = ALL.filter((s) => s.price >= idealPrice - band && s.price <= idealPrice + band);
-    if (bases.length < count) {
-      bases = ALL.slice().sort((a, b) => Math.abs(a.price - idealPrice) - Math.abs(b.price - idealPrice));
+  function findUpgradeTarget(stake, idealPrice) {
+    if (!stake || !idealPrice) return null;
+    const minP = stake * 1.01;
+    let best = null, dist = Infinity;
+    ALL.forEach((s) => {
+      const p = catalogSellPrice(s);
+      if (p < minP) return;
+      const d = Math.abs(p - idealPrice);
+      if (d < dist) { dist = d; best = s; }
+    });
+    return best ? decorateForUpgrade(best) : null;
+  }
+
+  function upgradeTargets(stake, idealPrice, count, doShuffle) {
+    if (!stake || !idealPrice) return [];
+    const n = count || 16;
+    const minP = stake * 1.01;
+    const tol = 0.2;
+    const lo = Math.max(minP, idealPrice * (1 - tol));
+    const hi = idealPrice * (1 + tol);
+
+    let pool = ALL.filter((s) => {
+      const p = catalogSellPrice(s);
+      return p >= lo && p <= hi;
+    });
+
+    if (pool.length < 6) {
+      pool = ALL.filter((s) => catalogSellPrice(s) >= minP)
+        .sort((a, b) => Math.abs(catalogSellPrice(a) - idealPrice) - Math.abs(catalogSellPrice(b) - idealPrice));
+    } else {
+      pool.sort((a, b) => catalogSellPrice(a) - catalogSellPrice(b));
     }
-    if (doShuffle) shuffle(bases);
-    const seen = new Set();
-    const items = [];
-    for (const s of bases) {
-      if (seen.has(s.id)) continue;
-      seen.add(s.id);
-      items.push(decorateForUpgrade(s, idealPrice));
-      if (items.length >= count * 2) break;
-    }
-    items.sort((a, b) => a.price - b.price);
-    if (doShuffle) shuffle(items);
-    return items.slice(0, count);
+
+    if (doShuffle) shuffle(pool);
+    return pool.slice(0, n).map((s) => decorateForUpgrade(s));
   }
 
   function skinsNearPrice(price, count, tolerance, doShuffle) {
@@ -302,7 +308,8 @@ window.SKINS = (function () {
 
   return {
     load, isReady, all, poolForCase, contentsForCase, featuredForCase, rollFromCase,
-    decorate, decorateForUpgrade, upgradePool, skinsNearPrice, randomDrop, placeholder, resolveImage, ensureImage, shuffle, expectedDrop,
+    decorate, decorateForUpgrade, skinsNearPrice, upgradeTargets, findUpgradeTarget,
+    randomDrop, placeholder, resolveImage, ensureImage, shuffle, expectedDrop,
     byRarity: () => byRarity,
   };
 })();

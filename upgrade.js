@@ -2,16 +2,15 @@
 window.UPGRADE = (function () {
   const D = window.DATA, S = window.SKINS, St = window.STATE, E = window.ECONOMY;
   const C = 603.2;
-  const TARGET_COUNT = 24;
+  const TARGET_COUNT = 16;
 
   let sources = [];
   let target = null;
-  let mult = 2;
   let balanceBet = 0;
-  let mode = 'mult';       // mult | chance | pick
-  let chancePreset = 0.35;
-  let busy = false;
+  let mult = 2;
+  let chancePreset = null; // null = режим множителя
   let targetList = [];
+  let busy = false;
 
   function skinValue() {
     return sources.reduce((a, uid) => {
@@ -22,36 +21,11 @@ window.UPGRADE = (function () {
 
   function srcValue() { return skinValue() + balanceBet; }
 
-  function hasStake() { return srcValue() > 0; }
-
   function idealTargetPrice() {
     const sv = srcValue();
     if (!sv) return 0;
-    if (mode === 'chance') {
-      const ch = Math.min(chancePreset, E.UPGRADE_MAX_CHANCE);
-      return Math.round(sv * E.UPGRADE_HOUSE / ch);
-    }
-    return Math.round(sv * mult);
-  }
-
-  function sameTarget(a, b) {
-    return a && b && a.id === b.id && a.price === b.price && a.wear === b.wear;
-  }
-
-  function pickClosest(list, price) {
-    if (!list.length) return null;
-    return list.reduce((best, it) => (
-      Math.abs(it.price - price) < Math.abs(best.price - price) ? it : best
-    ));
-  }
-
-  function syncPresetUI() {
-    document.querySelectorAll('#up-mult-switch button').forEach((b) => {
-      b.classList.toggle('active', mode === 'mult' && +b.dataset.mult === mult);
-    });
-    document.querySelectorAll('#up-chance-presets button').forEach((b) => {
-      b.classList.toggle('active', mode === 'chance' && +b.dataset.chance === chancePreset);
-    });
+    if (chancePreset) return E.upgradeTargetPrice(sv, chancePreset);
+    return sv * mult;
   }
 
   function syncBalanceUI() {
@@ -60,36 +34,44 @@ window.UPGRADE = (function () {
     range.max = max;
     if (balanceBet > max) balanceBet = max;
     range.value = balanceBet;
+    range.disabled = busy;
     document.getElementById('up-bal-val').textContent = FX.fmt(balanceBet);
     document.getElementById('up-bal-max').textContent = FX.fmt(max);
   }
 
-  function requireStake() {
-    if (hasStake()) return true;
+  function syncPresetUI() {
+    document.querySelectorAll('#up-mult-switch button').forEach((b) => {
+      const on = !chancePreset && +b.dataset.mult === mult;
+      b.classList.toggle('active', on);
+      b.disabled = busy || !srcValue();
+    });
+    document.querySelectorAll('#up-chance-presets button').forEach((b) => {
+      const on = chancePreset === +b.dataset.chance;
+      b.classList.toggle('active', on);
+      b.disabled = busy || !srcValue();
+    });
+    document.getElementById('up-shuffle').disabled = busy || !srcValue();
+  }
+
+  function needStake() {
+    if (srcValue()) return false;
     FX.toast('Сначала выбери скин или добавь баланс', 'bad');
-    return false;
+    return true;
   }
 
-  function setMult(m) {
-    if (!requireStake()) return;
-    mode = 'mult';
+  function applyMult(m) {
+    if (needStake()) return;
     mult = m;
-    target = null;
+    chancePreset = null;
     syncPresetUI();
-    refreshTargets();
-    autoSelectTarget();
-    recompute();
+    refreshTargets(false, true);
   }
 
-  function setChancePreset(ch) {
-    if (!requireStake()) return;
-    mode = 'chance';
+  function applyChance(ch) {
+    if (needStake()) return;
     chancePreset = ch;
-    target = null;
     syncPresetUI();
-    refreshTargets();
-    autoSelectTarget();
-    recompute();
+    refreshTargets(false, true);
   }
 
   function init() {
@@ -103,37 +85,32 @@ window.UPGRADE = (function () {
     document.getElementById('up-balance-range').addEventListener('input', (e) => {
       balanceBet = +e.target.value;
       document.getElementById('up-bal-val').textContent = FX.fmt(balanceBet);
-      if (!hasStake()) { target = null; refreshTargets(); renderSlots(); recompute(); return; }
-      onStakeChange();
+      syncPresetUI();
+      refreshTargets(false, true);
     });
 
     document.querySelectorAll('#up-mult-switch button').forEach((b) => {
-      b.addEventListener('click', () => setMult(+b.dataset.mult));
+      b.addEventListener('click', () => applyMult(+b.dataset.mult));
     });
 
     document.querySelectorAll('#up-chance-presets button').forEach((b) => {
-      b.addEventListener('click', () => setChancePreset(+b.dataset.chance));
+      b.addEventListener('click', () => applyChance(+b.dataset.chance));
     });
 
     document.getElementById('up-shuffle').addEventListener('click', () => {
-      if (!requireStake()) return;
-      refreshTargets(true);
-      autoSelectTarget(true);
-      recompute();
+      if (needStake()) return;
+      refreshTargets(true, false);
     });
 
     document.getElementById('upgrade-btn').addEventListener('click', run);
-    St.on('balance', () => { syncBalanceUI(); if (hasStake()) { refreshTargets(); if (mode !== 'pick') autoSelectTarget(); recompute(); } });
-    syncPresetUI();
+    St.on('balance', () => { syncBalanceUI(); syncPresetUI(); refreshTargets(false, true); });
   }
 
   function onShow() {
     sources = sources.filter((uid) => St.findItem(uid));
-    if (!hasStake()) target = null;
     syncBalanceUI();
     renderInventory();
-    refreshTargets();
-    if (hasStake() && mode !== 'pick') autoSelectTarget();
+    refreshTargets(false, sources.length > 0 || balanceBet > 0);
     renderSlots();
     recompute();
   }
@@ -153,93 +130,81 @@ window.UPGRADE = (function () {
     grid.querySelectorAll('.item').forEach((el) => el.addEventListener('click', () => toggleSource(el.dataset.uid)));
   }
 
-  function onStakeChange() {
-    if (mode === 'pick') {
-      mode = 'mult';
-      target = null;
-      syncPresetUI();
-    } else {
-      target = null;
-    }
-    refreshTargets();
-    autoSelectTarget();
-    recompute();
-  }
-
   function toggleSource(uid) {
     const i = sources.indexOf(uid);
     if (i >= 0) sources.splice(i, 1);
     else sources.push(uid);
+    renderInventory();
+    syncPresetUI();
+    refreshTargets(false, true);
+  }
 
-    if (!hasStake()) {
+  function pickAutoTarget(ideal) {
+    const sv = srcValue();
+    const best = S.findUpgradeTarget(sv, ideal);
+    if (best) return best;
+    return targetList[0] || null;
+  }
+
+  function ensureTargetInList(item) {
+    if (!item) return;
+    if (targetList.some((t) => t.id === item.id)) return;
+    targetList.unshift(item);
+    if (targetList.length > TARGET_COUNT) targetList.pop();
+    targetList.sort((a, b) => a.price - b.price);
+  }
+
+  function refreshTargets(shuffle, autoSelect) {
+    const grid = document.getElementById('up-targets');
+    const sv = srcValue();
+    syncPresetUI();
+
+    if (!sv) {
       target = null;
-      renderInventory();
-      refreshTargets();
+      targetList = [];
+      grid.innerHTML = `<div class="slot-empty" style="grid-column:1/-1">Выбери скин слева — затем x2 / x4 / x8 или шанс</div>`;
+      document.getElementById('up-target-hint').textContent = '';
       renderSlots();
       recompute();
       return;
     }
 
-    renderInventory();
-    onStakeChange();
+    const ideal = idealTargetPrice();
+    targetList = S.upgradeTargets(sv, ideal, TARGET_COUNT, shuffle);
+
+    if (autoSelect) {
+      target = pickAutoTarget(ideal);
+      ensureTargetInList(target);
+    } else if (target && !targetList.some((t) => t.id === target.id && t.price === target.price)) {
+      ensureTargetInList(target);
+    }
+
+    renderTargetGrid();
+    document.getElementById('up-target-hint').textContent =
+      `≈ ${FX.fmt(Math.round(ideal))}${FX.CUR}` + (chancePreset ? ` · шанс ~${Math.round(chancePreset * 100)}%` : ` · x${mult}`);
+    renderSlots();
+    recompute();
   }
 
-  function refreshTargets(shuffle) {
+  function renderTargetGrid() {
     const grid = document.getElementById('up-targets');
-    const hint = document.getElementById('up-target-hint');
-    const sv = srcValue();
-    const ideal = idealTargetPrice();
-
-    if (!sv || !ideal) {
-      targetList = [];
-      grid.innerHTML = `<div class="slot-empty" style="grid-column:1/-1">Выбери скин слева или добавь баланс — затем x2 / x4 / x8</div>`;
-      hint.textContent = 'выбери ставку';
-      return;
-    }
-
-    targetList = S.upgradePool(ideal, TARGET_COUNT, !!shuffle);
     if (!targetList.length) {
-      grid.innerHTML = `<div class="slot-empty" style="grid-column:1/-1">Нет подходящих целей для этой ставки</div>`;
-      hint.textContent = 'нет целей';
+      grid.innerHTML = `<div class="slot-empty" style="grid-column:1/-1">Нет подходящих целей — попробуй другой множитель</div>`;
       return;
     }
-
-    const lo = targetList[0].price;
-    const hi = targetList[targetList.length - 1].price;
-    const modeLabel = mode === 'chance'
-      ? `шанс ${Math.round(chancePreset * 100)}%`
-      : `x${mult}`;
-    hint.textContent = `${modeLabel} · ~${FX.fmt(ideal)}${FX.CUR} · ${FX.fmt(lo)}–${FX.fmt(hi)}${FX.CUR}`;
-
     grid.innerHTML = targetList.map((it, idx) => FX.itemCardHTML(it, {
-      selected: sameTarget(target, it),
+      selected: target && target.id === it.id && target.price === it.price,
       attrs: `data-idx="${idx}"`,
     })).join('');
-
     grid.querySelectorAll('.item').forEach((el) => el.addEventListener('click', () => {
       target = targetList[+el.dataset.idx];
-      mode = 'pick';
+      chancePreset = null;
       syncPresetUI();
-      renderSlots();
-      recompute();
       grid.querySelectorAll('.item').forEach((x) => x.classList.remove('selected'));
       el.classList.add('selected');
+      renderSlots();
+      recompute();
     }));
-  }
-
-  function autoSelectTarget(randomPick) {
-    if (!targetList.length) { target = null; return; }
-    const ideal = idealTargetPrice();
-    if (randomPick) {
-      target = targetList[Math.floor(Math.random() * targetList.length)];
-    } else {
-      target = pickClosest(targetList, ideal);
-    }
-    const grid = document.getElementById('up-targets');
-    grid.querySelectorAll('.item').forEach((el) => {
-      el.classList.toggle('selected', sameTarget(target, targetList[+el.dataset.idx]));
-    });
-    renderSlots();
   }
 
   function renderSlots() {
@@ -248,11 +213,13 @@ window.UPGRADE = (function () {
     const sv = srcValue();
 
     if (!sv) {
-      src.innerHTML = `<div class="slot-empty">Выбери предмет из инвентаря или добавь баланс</div>`;
+      src.innerHTML = `<div class="slot-empty">Выбери предмет из инвентаря</div>`;
     } else {
       const items = sources.map((uid) => St.findItem(uid)).filter(Boolean);
       let html = items.map((it) => FX.itemCardHTML(it)).join('');
-      if (balanceBet > 0) html += `<div class="up-bal-chip">+${FX.fmt(balanceBet)}${FX.CUR} баланс</div>`;
+      if (balanceBet > 0) {
+        html += `<div class="up-bal-chip">+${FX.fmt(balanceBet)}${FX.CUR} баланс</div>`;
+      }
       if (!items.length && balanceBet > 0) {
         html = `<div class="up-bal-chip up-bal-only">${FX.fmt(balanceBet)}${FX.CUR} с баланса</div>`;
       }
@@ -270,10 +237,6 @@ window.UPGRADE = (function () {
     return E.upgradeChance(sv, target.price);
   }
 
-  function btnLabel() {
-    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><path d="M7 14l5-5 5 5M7 10l5-5 5 5"/></svg> `;
-  }
-
   function recompute() {
     const ch = chance();
     const sv = srcValue();
@@ -282,32 +245,41 @@ window.UPGRADE = (function () {
 
     document.getElementById('up-chance').textContent = ch ? pct + '%' : '—';
     document.getElementById('up-mult').textContent = (sv && target)
-      ? 'x' + realMult.toFixed(2) + ` · ${FX.fmt(target.price)}${FX.CUR}`
-      : (hasStake() ? `ставка ${FX.fmt(sv)}${FX.CUR}` : 'x0.00');
+      ? `x${realMult.toFixed(2)} · ставка ${FX.fmt(sv)}${FX.CUR}`
+      : (sv ? `ставка ${FX.fmt(sv)}${FX.CUR}` : 'x0.00');
 
     document.getElementById('up-progress').style.strokeDashoffset = C * (1 - ch);
 
     const btn = document.getElementById('upgrade-btn');
-    const minTarget = sv * 1.02;
+    const minTarget = sv * 1.01;
     const targetOk = target && target.price >= minTarget;
-    const ok = sv > 0 && targetOk && ch > 0 && !busy;
+    const ok = sv > 0 && targetOk && !busy;
 
     btn.disabled = !ok;
-    if (ok) btn.innerHTML = btnLabel() + `Прокачать (${pct}%)`;
-    else if (!sv) btn.innerHTML = btnLabel() + 'Выбери ставку';
-    else if (!target) btn.innerHTML = btnLabel() + 'Выбери цель';
-    else if (!targetOk) btn.innerHTML = btnLabel() + 'Цель слишком дешёвая';
-    else btn.innerHTML = btnLabel() + 'Прокачать';
+    if (ok) {
+      btn.innerHTML = btnIcon() + ` Прокачать (${pct}%)`;
+    } else if (sv > 0 && !target) {
+      btn.innerHTML = btnIcon() + ' Выбери цель';
+    } else if (target && !targetOk) {
+      btn.innerHTML = btnIcon() + ' Цель слишком дешёвая';
+    } else {
+      btn.innerHTML = btnIcon() + ' Выбери предметы';
+    }
+  }
+
+  function btnIcon() {
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><path d="M7 14l5-5 5 5M7 10l5-5 5 5"/></svg>`;
   }
 
   function run() {
     if (busy) return;
     const sv = srcValue();
     const ch = chance();
-    if (!ch || !target || target.price < sv * 1.02) return;
+    if (!ch || !target || target.price < sv * 1.01) return;
 
     busy = true;
     document.getElementById('upgrade-btn').disabled = true;
+    syncPresetUI();
     FX.sound.open();
 
     const needle = document.getElementById('up-needle');
@@ -357,11 +329,10 @@ window.UPGRADE = (function () {
     sources = [];
     target = null;
     balanceBet = 0;
-    mode = 'mult';
     mult = 2;
+    chancePreset = null;
     busy = false;
     document.getElementById('up-needle').style.display = 'none';
-    syncPresetUI();
     onShow();
   }
 
