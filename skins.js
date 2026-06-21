@@ -260,10 +260,10 @@ window.SKINS = (function () {
   }
 
   function upgradeTargets(stake, idealPrice, count, doShuffle) {
-    if (!stake || !idealPrice) return [];
+    if (!stake || !idealPrice || !ALL.length) return [];
     const n = count || 16;
     const minP = stake * 1.01;
-    const tol = 0.2;
+    const tol = 0.25;
     const lo = Math.max(minP, idealPrice * (1 - tol));
     const hi = idealPrice * (1 + tol);
 
@@ -275,11 +275,14 @@ window.SKINS = (function () {
     if (pool.length < 6) {
       pool = ALL.filter((s) => catalogSellPrice(s) >= minP)
         .sort((a, b) => Math.abs(catalogSellPrice(a) - idealPrice) - Math.abs(catalogSellPrice(b) - idealPrice));
-    } else {
-      pool.sort((a, b) => catalogSellPrice(a) - catalogSellPrice(b));
+    }
+    if (!pool.length) {
+      pool = ALL.slice()
+        .sort((a, b) => Math.abs(catalogSellPrice(a) - idealPrice) - Math.abs(catalogSellPrice(b) - idealPrice));
     }
 
     if (doShuffle) shuffle(pool);
+    else pool.sort((a, b) => catalogSellPrice(a) - catalogSellPrice(b));
     return pool.slice(0, n).map((s) => decorateForUpgrade(s));
   }
 

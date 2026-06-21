@@ -8,9 +8,11 @@ window.UPGRADE = (function () {
   let target = null;
   let balanceBet = 0;
   let mult = 2;
-  let chancePreset = null; // null = режим множителя
+  let chancePreset = null;
   let targetList = [];
   let busy = false;
+
+  function $(id) { return document.getElementById(id); }
 
   function skinValue() {
     return sources.reduce((a, uid) => {
@@ -28,34 +30,39 @@ window.UPGRADE = (function () {
     return sv * mult;
   }
 
+  function setHint(text) {
+    const el = $('up-target-hint');
+    if (el) el.textContent = text || 'дешевле → дороже';
+  }
+
   function syncBalanceUI() {
     const max = Math.floor(St.getBalance());
-    const range = document.getElementById('up-balance-range');
+    const range = $('up-balance-range');
+    if (!range) return;
     range.max = max;
     if (balanceBet > max) balanceBet = max;
     range.value = balanceBet;
     range.disabled = busy;
-    document.getElementById('up-bal-val').textContent = FX.fmt(balanceBet);
-    document.getElementById('up-bal-max').textContent = FX.fmt(max);
+    $('up-bal-val').textContent = FX.fmt(balanceBet);
+    $('up-bal-max').textContent = FX.fmt(max);
   }
 
   function syncPresetUI() {
     document.querySelectorAll('#up-mult-switch button').forEach((b) => {
-      const on = !chancePreset && +b.dataset.mult === mult;
-      b.classList.toggle('active', on);
-      b.disabled = busy || !srcValue();
+      b.classList.toggle('active', !chancePreset && +b.dataset.mult === mult);
+      b.disabled = busy;
     });
     document.querySelectorAll('#up-chance-presets button').forEach((b) => {
-      const on = chancePreset === +b.dataset.chance;
-      b.classList.toggle('active', on);
-      b.disabled = busy || !srcValue();
+      b.classList.toggle('active', chancePreset === +b.dataset.chance);
+      b.disabled = busy;
     });
-    document.getElementById('up-shuffle').disabled = busy || !srcValue();
+    const sh = $('up-shuffle');
+    if (sh) sh.disabled = busy;
   }
 
   function needStake() {
     if (srcValue()) return false;
-    FX.toast('Сначала выбери скин или добавь баланс', 'bad');
+    FX.toast('Сначала выбери скин слева или добавь баланс', 'bad');
     return true;
   }
 
@@ -75,16 +82,17 @@ window.UPGRADE = (function () {
   }
 
   function init() {
-    const svg = document.getElementById('up-wheel');
+    const svg = $('up-wheel');
+    if (!svg) return;
     const ns = 'http://www.w3.org/2000/svg';
     const defs = document.createElementNS(ns, 'defs');
     defs.innerHTML = `<linearGradient id="upGrad" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#00e0c6"/><stop offset="1" stop-color="#6c5cff"/></linearGradient>`;
     svg.insertBefore(defs, svg.firstChild);
 
-    document.getElementById('up-balance-range').addEventListener('input', (e) => {
+    $('up-balance-range').addEventListener('input', (e) => {
       balanceBet = +e.target.value;
-      document.getElementById('up-bal-val').textContent = FX.fmt(balanceBet);
+      $('up-bal-val').textContent = FX.fmt(balanceBet);
       syncPresetUI();
       refreshTargets(false, true);
     });
@@ -97,28 +105,29 @@ window.UPGRADE = (function () {
       b.addEventListener('click', () => applyChance(+b.dataset.chance));
     });
 
-    document.getElementById('up-shuffle').addEventListener('click', () => {
+    $('up-shuffle').addEventListener('click', () => {
       if (needStake()) return;
       refreshTargets(true, false);
     });
 
-    document.getElementById('upgrade-btn').addEventListener('click', run);
-    St.on('balance', () => { syncBalanceUI(); syncPresetUI(); refreshTargets(false, true); });
+    $('upgrade-btn').addEventListener('click', run);
+    St.on('balance', () => { syncBalanceUI(); if (srcValue()) refreshTargets(false, true); });
   }
 
   function onShow() {
+    if (!S.isReady()) return;
     sources = sources.filter((uid) => St.findItem(uid));
     syncBalanceUI();
     renderInventory();
-    refreshTargets(false, sources.length > 0 || balanceBet > 0);
+    refreshTargets(false, srcValue() > 0);
     renderSlots();
     recompute();
   }
 
   function renderInventory() {
-    const grid = document.getElementById('up-inventory');
+    const grid = $('up-inventory');
     const inv = St.getInventory();
-    document.getElementById('up-inv-count').textContent = inv.length + ' шт.';
+    $('up-inv-count').textContent = inv.length + ' шт.';
     if (!inv.length) {
       grid.innerHTML = `<div class="slot-empty" style="grid-column:1/-1">Инвентарь пуст — открой кейс.</div>`;
       return;
@@ -136,34 +145,39 @@ window.UPGRADE = (function () {
     else sources.push(uid);
     renderInventory();
     syncPresetUI();
-    refreshTargets(false, true);
+    if (srcValue()) refreshTargets(false, true);
+    else {
+      target = null;
+      targetList = [];
+      $('up-targets').innerHTML = `<div class="slot-empty" style="grid-column:1/-1">Выбери скин — затем x2 / x4 / x8</div>`;
+      setHint('');
+      renderSlots();
+      recompute();
+    }
   }
 
   function pickAutoTarget(ideal) {
-    const sv = srcValue();
-    const best = S.findUpgradeTarget(sv, ideal);
-    if (best) return best;
-    return targetList[0] || null;
+    return S.findUpgradeTarget(srcValue(), ideal) || targetList[0] || null;
   }
 
   function ensureTargetInList(item) {
-    if (!item) return;
-    if (targetList.some((t) => t.id === item.id)) return;
-    targetList.unshift(item);
-    if (targetList.length > TARGET_COUNT) targetList.pop();
+    if (!item || targetList.some((t) => t.id === item.id)) return;
+    targetList.push(item);
     targetList.sort((a, b) => a.price - b.price);
+    if (targetList.length > TARGET_COUNT) targetList = targetList.slice(0, TARGET_COUNT);
   }
 
   function refreshTargets(shuffle, autoSelect) {
-    const grid = document.getElementById('up-targets');
+    if (!S.isReady()) return;
+    const grid = $('up-targets');
     const sv = srcValue();
     syncPresetUI();
 
     if (!sv) {
       target = null;
       targetList = [];
-      grid.innerHTML = `<div class="slot-empty" style="grid-column:1/-1">Выбери скин слева — затем x2 / x4 / x8 или шанс</div>`;
-      document.getElementById('up-target-hint').textContent = '';
+      grid.innerHTML = `<div class="slot-empty" style="grid-column:1/-1">Выбери скин слева или добавь баланс</div>`;
+      setHint('');
       renderSlots();
       recompute();
       return;
@@ -172,28 +186,30 @@ window.UPGRADE = (function () {
     const ideal = idealTargetPrice();
     targetList = S.upgradeTargets(sv, ideal, TARGET_COUNT, shuffle);
 
-    if (autoSelect) {
+    if (autoSelect || !target) {
       target = pickAutoTarget(ideal);
       ensureTargetInList(target);
-    } else if (target && !targetList.some((t) => t.id === target.id && t.price === target.price)) {
+    } else if (!targetList.some((t) => t.id === target.id)) {
       ensureTargetInList(target);
     }
 
     renderTargetGrid();
-    document.getElementById('up-target-hint').textContent =
-      `≈ ${FX.fmt(Math.round(ideal))}${FX.CUR}` + (chancePreset ? ` · шанс ~${Math.round(chancePreset * 100)}%` : ` · x${mult}`);
+
+    const pct = chancePreset ? Math.round(chancePreset * 100) : null;
+    setHint(`цель ≈ ${FX.fmt(Math.round(ideal))}${FX.CUR}` + (pct ? ` · ~${pct}%` : ` · x${mult}`));
+
     renderSlots();
     recompute();
   }
 
   function renderTargetGrid() {
-    const grid = document.getElementById('up-targets');
+    const grid = $('up-targets');
     if (!targetList.length) {
-      grid.innerHTML = `<div class="slot-empty" style="grid-column:1/-1">Нет подходящих целей — попробуй другой множитель</div>`;
+      grid.innerHTML = `<div class="slot-empty" style="grid-column:1/-1">Нет целей — попробуй x2 или меньший множитель</div>`;
       return;
     }
     grid.innerHTML = targetList.map((it, idx) => FX.itemCardHTML(it, {
-      selected: target && target.id === it.id && target.price === it.price,
+      selected: target && target.id === it.id,
       attrs: `data-idx="${idx}"`,
     })).join('');
     grid.querySelectorAll('.item').forEach((el) => el.addEventListener('click', () => {
@@ -208,8 +224,8 @@ window.UPGRADE = (function () {
   }
 
   function renderSlots() {
-    const src = document.getElementById('up-source-slot');
-    const tgt = document.getElementById('up-target-slot');
+    const src = $('up-source-slot');
+    const tgt = $('up-target-slot');
     const sv = srcValue();
 
     if (!sv) {
@@ -217,18 +233,16 @@ window.UPGRADE = (function () {
     } else {
       const items = sources.map((uid) => St.findItem(uid)).filter(Boolean);
       let html = items.map((it) => FX.itemCardHTML(it)).join('');
-      if (balanceBet > 0) {
-        html += `<div class="up-bal-chip">+${FX.fmt(balanceBet)}${FX.CUR} баланс</div>`;
-      }
+      if (balanceBet > 0) html += `<div class="up-bal-chip">+${FX.fmt(balanceBet)}${FX.CUR}</div>`;
       if (!items.length && balanceBet > 0) {
-        html = `<div class="up-bal-chip up-bal-only">${FX.fmt(balanceBet)}${FX.CUR} с баланса</div>`;
+        html = `<div class="up-bal-chip up-bal-only">${FX.fmt(balanceBet)}${FX.CUR}</div>`;
       }
       src.innerHTML = html;
     }
 
     tgt.innerHTML = target
       ? FX.itemCardHTML(target)
-      : `<div class="slot-empty">Нажми x2 / x4 / x8 или выбери цель</div>`;
+      : `<div class="slot-empty">Нажми x2 / x4 / x8</div>`;
   }
 
   function chance() {
@@ -243,28 +257,20 @@ window.UPGRADE = (function () {
     const pct = Math.round(ch * 100);
     const realMult = (sv && target) ? target.price / sv : 0;
 
-    document.getElementById('up-chance').textContent = ch ? pct + '%' : '—';
-    document.getElementById('up-mult').textContent = (sv && target)
-      ? `x${realMult.toFixed(2)} · ставка ${FX.fmt(sv)}${FX.CUR}`
-      : (sv ? `ставка ${FX.fmt(sv)}${FX.CUR}` : 'x0.00');
+    $('up-chance').textContent = ch ? pct + '%' : '—';
+    $('up-mult').textContent = (sv && target)
+      ? `x${realMult.toFixed(2)} · ${FX.fmt(sv)}${FX.CUR}`
+      : (sv ? `${FX.fmt(sv)}${FX.CUR}` : '—');
 
-    document.getElementById('up-progress').style.strokeDashoffset = C * (1 - ch);
+    $('up-progress').style.strokeDashoffset = C * (1 - ch);
 
-    const btn = document.getElementById('upgrade-btn');
-    const minTarget = sv * 1.01;
-    const targetOk = target && target.price >= minTarget;
-    const ok = sv > 0 && targetOk && !busy;
-
+    const btn = $('upgrade-btn');
+    const ok = sv > 0 && target && target.price >= sv * 1.01 && !busy;
     btn.disabled = !ok;
-    if (ok) {
-      btn.innerHTML = btnIcon() + ` Прокачать (${pct}%)`;
-    } else if (sv > 0 && !target) {
-      btn.innerHTML = btnIcon() + ' Выбери цель';
-    } else if (target && !targetOk) {
-      btn.innerHTML = btnIcon() + ' Цель слишком дешёвая';
-    } else {
-      btn.innerHTML = btnIcon() + ' Выбери предметы';
-    }
+
+    if (ok) btn.innerHTML = btnIcon() + ` Прокачать (${pct}%)`;
+    else if (sv > 0 && !target) btn.innerHTML = btnIcon() + ' Подбери цель (x2/x4/x8)';
+    else btn.innerHTML = btnIcon() + ' Выбери ставку';
   }
 
   function btnIcon() {
@@ -278,11 +284,11 @@ window.UPGRADE = (function () {
     if (!ch || !target || target.price < sv * 1.01) return;
 
     busy = true;
-    document.getElementById('upgrade-btn').disabled = true;
+    $('upgrade-btn').disabled = true;
     syncPresetUI();
     FX.sound.open();
 
-    const needle = document.getElementById('up-needle');
+    const needle = $('up-needle');
     needle.style.display = 'block';
     needle.style.transition = 'none';
     needle.style.transform = 'translate(-50%,-100%) rotate(0deg)';
@@ -293,21 +299,20 @@ window.UPGRADE = (function () {
     const landing = win
       ? Math.random() * Math.max(2, winDeg - 4) + 2
       : winDeg + 2 + Math.random() * Math.max(2, 360 - winDeg - 4);
-    const final = 360 * 6 + landing;
 
     let ticks = 26;
     const tick = () => { if (ticks-- > 0) { FX.sound.tick(); setTimeout(tick, 70 + (26 - ticks) * 6); } };
     tick();
 
     needle.style.transition = 'transform 3.6s cubic-bezier(0.1, 0.8, 0.15, 1)';
-    requestAnimationFrame(() => { needle.style.transform = `translate(-50%,-100%) rotate(${final}deg)`; });
+    requestAnimationFrame(() => { needle.style.transform = `translate(-50%,-100%) rotate(${360 * 6 + landing}deg)`; });
 
     setTimeout(() => settle(win), 3700);
   }
 
   function settle(win) {
     St.bumpStat('upgrades', 1);
-    const removed = St.removeMany(sources);
+    St.removeMany(sources);
     if (balanceBet > 0) St.spend(balanceBet);
 
     if (win) {
@@ -323,7 +328,7 @@ window.UPGRADE = (function () {
       FX.toast(`Апгрейд удался! +${prize.skin} (${FX.fmt(prize.price)}${FX.CUR})`, 'good');
     } else {
       FX.sound.lose();
-      FX.toast(`Апгрейд провалился. Ставка сгорела.`, 'bad');
+      FX.toast('Апгрейд провалился. Ставка сгорела.', 'bad');
     }
 
     sources = [];
@@ -332,7 +337,7 @@ window.UPGRADE = (function () {
     mult = 2;
     chancePreset = null;
     busy = false;
-    document.getElementById('up-needle').style.display = 'none';
+    $('up-needle').style.display = 'none';
     onShow();
   }
 

@@ -1,6 +1,6 @@
 /* ============ NEONDROP — UI shell (nav, header) ============ */
 window.UI = (function () {
-  const S = window.SKINS, St = window.STATE;
+  const S = window.SKINS, St = window.STATE, E = window.ECONOMY;
   const VIEWS = ['cases', 'open', 'upgrade', 'contract', 'inventory'];
 
   function showView(name) {
@@ -113,12 +113,13 @@ window.UI = (function () {
     St.on('inventory', renderHeroStats);
     syncBalance(St.getBalance());
     updateBonusBtn();
+  }
 
-    // hash routing
+  function bootView() {
     const initial = (location.hash || '').replace('#', '');
     if (VIEWS.includes(initial) && initial !== 'open') showView(initial);
     else showView('cases');
   }
 
-  return { init, showView, renderHeroStats, updateBonusBtn };
+  return { init, bootView, showView, renderHeroStats, updateBonusBtn };
 })();
