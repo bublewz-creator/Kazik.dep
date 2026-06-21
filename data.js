@@ -171,10 +171,15 @@ window.DATA = (function () {
   ];
 
   function budgetEntries() {
+    const lookup = {};
+    if (typeof window !== 'undefined' && Array.isArray(window.FALLBACK_SKINS)) {
+      window.FALLBACK_SKINS.forEach((o) => { if (o.i) lookup[(o.w + '|' + o.s).toLowerCase()] = o.i; });
+    }
     return BUDGET_SKINS.map(([weapon, skin, rarity]) => ({
       id: (weapon + '-' + skin).replace(/\s+/g, '-').toLowerCase(),
       weapon, skin, name: weapon + ' | ' + skin,
-      rarity, color: RARITIES[rarity].color, image: null,
+      rarity, color: RARITIES[rarity].color,
+      image: lookup[(weapon + '|' + skin).toLowerCase()] || null,
     }));
   }
 

@@ -24,8 +24,7 @@ window.CASES = (function () {
   }
   function cardHTML(c) {
     const feat = (S.featuredForCase ? S.featuredForCase(c) : []);
-    const imgs = feat.map((s, i) => `<img class="cf cf-${i}" src="${FX.esc(s.image)}" alt=""
-        onerror="this.src=SKINS.placeholder({color:'${s.color}',weapon:'${escq(s.weapon)}',skin:'${escq(s.skin)}'})"/>`).join('');
+    const imgs = feat.map((s, i) => FX.imgHTML(s).replace('<img ', `<img class="cf cf-${i}" `)).join('');
     return `
       <div class="case-card" data-id="${c.id}" style="--glow:${c.glow}">
         ${c.tag ? `<span class="case-tag">${FX.esc(c.tag)}</span>` : ''}
@@ -106,13 +105,12 @@ window.CASES = (function () {
   function roulItemHTML(it) {
     const wear = it.wearNameRu || it.wearName || it.wear || '';
     return `<div class="roul-item" style="--rc:${it.color}">
-      <img src="${FX.esc(it.image)}" onerror="this.src=SKINS.placeholder({color:'${it.color}',weapon:'${escq(it.weapon)}',skin:'${escq(it.skin)}'})"/>
+      ${FX.imgHTML(it)}
       <div class="ri-name">${FX.esc(it.skin || it.name)}</div>
       <div class="ri-wear">${FX.esc(wear)}</div>
       <div class="ri-price">${FX.fmt(it.price)}${FX.CUR}</div>
     </div>`;
   }
-  function escq(s){return String(s==null?'':s).replace(/['\\]/g,'\\$&');}
 
   // ---------- open action ----------
   function open() {

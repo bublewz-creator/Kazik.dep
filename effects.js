@@ -11,6 +11,14 @@ window.FX = (function () {
     return String(s == null ? '' : s).replace(/[<>&"']/g, (m) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[m]));
   }
 
+  function imgHTML(item, src, ph) {
+    const img = src || ((window.SKINS && SKINS.resolveImage) ? SKINS.resolveImage(item) : (item.image || ''));
+    const fallback = ph || ((window.SKINS && SKINS.placeholder) ? SKINS.placeholder(item) : img);
+    const alt = esc(item.name || item.skin || '');
+    return `<img src="${esc(img)}" alt="${alt}" loading="lazy" referrerpolicy="no-referrer"
+      data-ph="${esc(fallback)}" onerror="if(!this.dataset.f){this.dataset.f=1;this.src=this.dataset.ph}"/>`;
+  }
+
   // ----- shared item card markup -----
   function itemCardHTML(item, opts) {
     opts = opts || {};
@@ -20,11 +28,12 @@ window.FX = (function () {
     const wearShort = item.wear ? `<span class="item-wear-tag">${esc(item.wear)}</span>` : '';
     const wear = wearLabel ? `<span class="item-wear" title="${esc(wearLabel)}">${esc(wearLabel)}</span>${wearShort}` : '';
     const extra = opts.extra || '';
+    const img = (window.SKINS && SKINS.resolveImage) ? SKINS.resolveImage(item) : (item.image || '');
+    const ph = (window.SKINS && SKINS.placeholder) ? SKINS.placeholder(item) : img;
     return `
       <div class="item ${opts.selected ? 'selected' : ''}" style="--rc:${rcolor}" ${opts.attrs || ''}>
         <span class="item-rare-badge">${esc(rname)}</span>
-        <div class="item-img"><img src="${esc(item.image)}" alt="${esc(item.name)}" loading="lazy"
-             onerror="this.src=SKINS.placeholder(${jsonAttr(item)})" /></div>
+        <div class="item-img">${imgHTML(item, img, ph)}</div>
         <div class="item-info">
           <div class="item-weapon">${esc(item.weapon || '')}</div>
           <div class="item-name">${esc(item.skin || item.name)}</div>
@@ -36,10 +45,6 @@ window.FX = (function () {
         ${extra}
       </div>`;
   }
-  function jsonAttr(item) {
-    return "{color:'" + (item.color || '#6c5cff') + "',weapon:'" + escq(item.weapon) + "',skin:'" + escq(item.skin || item.name) + "'}";
-  }
-  function escq(s) { return String(s == null ? '' : s).replace(/['\\]/g, '\\$&'); }
 
   // ----- toasts -----
   const toastWrap = () => document.getElementById('toast-wrap');
@@ -123,5 +128,5 @@ window.FX = (function () {
 
   function flyi(item) { return (window.DATA.RARITIES[item.rarity] || {}).tier >= 5; }
 
-  return { fmt, esc, itemCardHTML, toast, confetti, sound, isRare: flyi, CUR };
+  return { fmt, esc, imgHTML, itemCardHTML, toast, confetti, sound, isRare: flyi, CUR };
 })();

@@ -5,7 +5,7 @@ window.ECONOMY = (function () {
 
   // Апгрейд: шанс = (ставка / цель) × HOUSE, но не выше MAX_CHANCE.
   const UPGRADE_HOUSE = 0.78;
-  const UPGRADE_MAX_CHANCE = 0.62;
+  const UPGRADE_MAX_CHANCE = 0.85;
 
   // Контракт: результат 62–88% от суммы вложенных скинов (среднее ~75%).
   const CONTRACT_MIN = 0.62;

@@ -24,6 +24,44 @@ window.SKINS = (function () {
   }
   function esc(s) { return String(s).replace(/[<>&]/g, (m) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[m])); }
 
+  let IMG_LOOKUP = {};
+  function buildImgLookup() {
+    IMG_LOOKUP = {};
+    const list = (typeof window !== 'undefined' && window.FALLBACK_SKINS) || [];
+    list.forEach((o) => { if (o.i) IMG_LOOKUP[(o.w + '|' + o.s).toLowerCase()] = o.i; });
+  }
+
+  function lookupImage(weapon, skin, name) {
+    const w = (weapon || '').trim();
+    const s = (skin || '').trim();
+    if (w && s) {
+      const hit = IMG_LOOKUP[(w + '|' + s).toLowerCase()];
+      if (hit) return hit;
+    }
+    const n = (name || '').replace(/^[★\s]+/, '').trim();
+    if (n.includes('|')) {
+      const parts = n.split('|').map((x) => x.trim());
+      if (parts.length >= 2) {
+        const hit = IMG_LOOKUP[(parts[0] + '|' + parts[1]).toLowerCase()];
+        if (hit) return hit;
+      }
+    }
+    return null;
+  }
+
+  function isValidImageUrl(url) {
+    return typeof url === 'string' && /^https?:\/\//i.test(url.trim());
+  }
+
+  function ensureImage(item) {
+    if (isValidImageUrl(item.image)) return item.image.trim();
+    const found = lookupImage(item.weapon, item.skin, item.name);
+    if (found) return found;
+    return placeholder(item);
+  }
+
+  function resolveImage(item) { return ensureImage(item); }
+
   function index(list) {
     ALL = list;
     D.TIER_ORDER.forEach((r) => (byRarity[r] = []));
@@ -44,6 +82,7 @@ window.SKINS = (function () {
   }
 
   async function load() {
+    buildImgLookup();
     let raw = null;
     const sources = (D.API_MIRRORS && D.API_MIRRORS.length) ? D.API_MIRRORS : [D.API_URL];
     for (const url of sources) {
@@ -69,7 +108,7 @@ window.SKINS = (function () {
           skin: skin || s.name,
           rarity,
           color: D.RARITIES[rarity].color,
-          image: s.image || null,
+          image: s.image || lookupImage(weapon, skin, s.name) || null,
           price: D.priceFor(rarity, s.name, weapon, skin),
         });
       }
@@ -78,7 +117,7 @@ window.SKINS = (function () {
       list = D.buildFallback().map((s) => ({ ...s, price: D.priceFor(s.rarity, s.name, s.weapon, s.skin) }));
     }
 
-    list.forEach((s) => { if (!s.image) s.image = placeholder(s); });
+    list.forEach((s) => { s.image = ensureImage(s); });
     index(list);
     ready = true;
     return list;
@@ -185,10 +224,57 @@ window.SKINS = (function () {
     const price = E().sellPrice(market); // цена в инвентаре = после комиссии при продаже
     return {
       id: skin.id, name: skin.name, weapon: skin.weapon, skin: skin.skin,
-      rarity: skin.rarity, color: skin.color, image: skin.image,
+      rarity: skin.rarity, color: skin.color, image: ensureImage(skin),
       wear: wear.short, wearName: wear.name, wearNameRu: wear.nameRu,
       price, marketPrice: market,
     };
+  }
+
+  function decorateForUpgrade(skin, targetPrice) {
+    let bestWear = D.WEARS[2];
+    let bestPrice = 0;
+    let bestMarket = 0;
+    let bestDiff = Infinity;
+    D.WEARS.forEach((wear) => {
+      const market = Math.max(1, Math.round(skin.price * wear.mult));
+      const price = E().sellPrice(market);
+      const diff = Math.abs(price - targetPrice);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        bestWear = wear;
+        bestPrice = price;
+        bestMarket = market;
+      }
+    });
+    return {
+      id: skin.id, name: skin.name, weapon: skin.weapon, skin: skin.skin,
+      rarity: skin.rarity, color: skin.color, image: ensureImage(skin),
+      wear: bestWear.short, wearName: bestWear.name, wearNameRu: bestWear.nameRu,
+      price: bestPrice, marketPrice: bestMarket,
+    };
+  }
+
+  /** Пул целей апгрейда: скины с ценой около idealPrice, от дешёвых к дорогим. */
+  function upgradePool(idealPrice, count, doShuffle) {
+    count = count || 24;
+    if (!ALL.length || !idealPrice) return [];
+    const band = idealPrice * 0.55;
+    let bases = ALL.filter((s) => s.price >= idealPrice - band && s.price <= idealPrice + band);
+    if (bases.length < count) {
+      bases = ALL.slice().sort((a, b) => Math.abs(a.price - idealPrice) - Math.abs(b.price - idealPrice));
+    }
+    if (doShuffle) shuffle(bases);
+    const seen = new Set();
+    const items = [];
+    for (const s of bases) {
+      if (seen.has(s.id)) continue;
+      seen.add(s.id);
+      items.push(decorateForUpgrade(s, idealPrice));
+      if (items.length >= count * 2) break;
+    }
+    items.sort((a, b) => a.price - b.price);
+    if (doShuffle) shuffle(items);
+    return items.slice(0, count);
   }
 
   function skinsNearPrice(price, count, tolerance, doShuffle) {
@@ -216,7 +302,7 @@ window.SKINS = (function () {
 
   return {
     load, isReady, all, poolForCase, contentsForCase, featuredForCase, rollFromCase,
-    decorate, skinsNearPrice, randomDrop, placeholder, shuffle, expectedDrop,
+    decorate, decorateForUpgrade, upgradePool, skinsNearPrice, randomDrop, placeholder, resolveImage, ensureImage, shuffle, expectedDrop,
     byRarity: () => byRarity,
   };
 })();
