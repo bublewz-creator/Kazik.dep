@@ -145,7 +145,38 @@
             </div>
           </div>
           <div class="up-mult" id="up-mult">x0.00</div>
-          <button class="btn btn-primary big" id="upgrade-btn" disabled>Выбери предметы</button>
+
+          <div class="upgrade-controls">
+            <div class="up-balance-block">
+              <div class="up-balance-label">
+                Сумма баланса:
+                <span class="up-bal-val" id="up-bal-val">0</span><span class="coin">₽</span>
+                <span class="muted">(макс <span id="up-bal-max">0</span>)</span>
+              </div>
+              <input type="range" id="up-balance-range" min="0" max="0" value="0" step="1" />
+            </div>
+
+            <button class="btn up-action-btn" id="upgrade-btn" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><path d="M7 14l5-5 5 5M7 10l5-5 5 5"/></svg>
+              Прокачать
+            </button>
+
+            <div class="up-presets">
+              <div class="qty-switch" id="up-mult-switch">
+                <button data-mult="2" class="active">x2</button>
+                <button data-mult="4">x4</button>
+                <button data-mult="8">x8</button>
+              </div>
+              <div class="chance-presets" id="up-chance-presets">
+                <button data-chance="0.35" class="chance-low">35%</button>
+                <button data-chance="0.55" class="chance-mid">55%</button>
+                <button data-chance="0.75" class="chance-high">75%</button>
+              </div>
+              <button class="btn btn-ghost up-shuffle-btn" id="up-shuffle" title="Перемешать цели">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+              </button>
+            </div>
+          </div>
         </div>
 
         <div class="upgrade-col">
@@ -162,9 +193,7 @@
           <div class="pool-grid" id="up-inventory"></div>
         </div>
         <div class="pool">
-          <div class="pool-head"><h4>Цель апгрейда</h4>
-            <input type="range" id="up-target-range" min="0" max="100" value="40" />
-          </div>
+          <div class="pool-head"><h4>Цель апгрейда</h4><span class="muted">дешевле → дороже</span></div>
           <div class="pool-grid" id="up-targets"></div>
         </div>
       </div>

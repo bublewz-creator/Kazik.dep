@@ -191,12 +191,14 @@ window.SKINS = (function () {
     };
   }
 
-  function skinsNearPrice(price, count, tolerance) {
+  function skinsNearPrice(price, count, tolerance, doShuffle) {
     const tol = tolerance || 0.45;
     const lo = price * (1 - tol), hi = price * (1 + tol);
     let candidates = ALL.filter((s) => s.price >= lo && s.price <= hi);
     if (candidates.length < count) candidates = ALL.slice().sort((a, b) => Math.abs(a.price - price) - Math.abs(b.price - price));
-    return shuffle(candidates).slice(0, count).map((s) => decorate(s));
+    if (doShuffle) shuffle(candidates);
+    else candidates.sort((a, b) => a.price - b.price);
+    return candidates.slice(0, count).map((s) => decorate(s));
   }
 
   function shuffle(a) {
