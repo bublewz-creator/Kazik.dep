@@ -215,10 +215,16 @@ window.DATA = (function () {
 
   function mergeBudgetSkins(list) {
     const seen = new Set(list.map((s) => s.id));
+    const lookup = {};
+    if (typeof window !== 'undefined' && Array.isArray(window.FALLBACK_SKINS)) {
+      window.FALLBACK_SKINS.forEach((o) => { if (o.i) lookup[(o.w + '|' + o.s).toLowerCase()] = o.i; });
+    }
     budgetEntries().forEach((b) => {
       if (seen.has(b.id)) return;
+      const img = lookup[(b.weapon + '|' + b.skin).toLowerCase()];
+      if (!img) return;
       seen.add(b.id);
-      list.push(Object.assign({}, b, { price: priceFor(b.rarity, b.name, b.weapon, b.skin) }));
+      list.push(Object.assign({}, b, { image: img, price: priceFor(b.rarity, b.name, b.weapon, b.skin) }));
     });
     return list;
   }

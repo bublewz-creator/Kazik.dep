@@ -275,6 +275,7 @@ main { width: 100%; max-width: 1300px; margin: 0 auto; padding: 28px 26px 50px; 
 .item.selected { box-shadow: 0 0 0 2px var(--accent-2), 0 12px 26px rgba(0,0,0,0.5); }
 .item-img { position: relative; z-index: 1; height: 80px; display: grid; place-items: center; }
 .item-img img { max-width: 100%; max-height: 80px; object-fit: contain; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.5)); }
+.item-img img.img-broken { opacity: 0.2; filter: none; }
 .item-info { position: relative; z-index: 1; margin-top: 6px; }
 .item-weapon { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .item-name { font-size: 0.85rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

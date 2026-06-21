@@ -11,12 +11,20 @@ window.FX = (function () {
     return String(s == null ? '' : s).replace(/[<>&"']/g, (m) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[m]));
   }
 
-  function imgHTML(item, src, ph) {
-    const img = src || ((window.SKINS && SKINS.resolveImage) ? SKINS.resolveImage(item) : (item.image || ''));
-    const fallback = ph || ((window.SKINS && SKINS.placeholder) ? SKINS.placeholder(item) : img);
-    const alt = esc(item.name || item.skin || '');
-    return `<img src="${esc(img)}" alt="${alt}" loading="lazy" referrerpolicy="no-referrer"
-      data-ph="${esc(fallback)}" onerror="if(!this.dataset.f){this.dataset.f=1;this.src=this.dataset.ph}"/>`;
+  function attrEsc(url) {
+    return String(url == null ? '' : url).replace(/"/g, '%22');
+  }
+
+  function imgHTML(item) {
+    let src = item.image;
+    if (!/^https?:/i.test(src || '')) {
+      src = (window.SKINS && SKINS.resolveImageUrl) ? SKINS.resolveImageUrl(item) : '';
+    }
+    if (!/^https?:/i.test(src || '')) {
+      src = (window.SKINS && SKINS.genericPlaceholder) ? SKINS.genericPlaceholder(item.color) : '';
+    }
+    return `<img src="${attrEsc(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+      onerror="this.onerror=null;this.classList.add('img-broken')"/>`;
   }
 
   // ----- shared item card markup -----
@@ -28,12 +36,10 @@ window.FX = (function () {
     const wearShort = item.wear ? `<span class="item-wear-tag">${esc(item.wear)}</span>` : '';
     const wear = wearLabel ? `<span class="item-wear" title="${esc(wearLabel)}">${esc(wearLabel)}</span>${wearShort}` : '';
     const extra = opts.extra || '';
-    const img = (window.SKINS && SKINS.resolveImage) ? SKINS.resolveImage(item) : (item.image || '');
-    const ph = (window.SKINS && SKINS.placeholder) ? SKINS.placeholder(item) : img;
     return `
       <div class="item ${opts.selected ? 'selected' : ''}" style="--rc:${rcolor}" ${opts.attrs || ''}>
         <span class="item-rare-badge">${esc(rname)}</span>
-        <div class="item-img">${imgHTML(item, img, ph)}</div>
+        <div class="item-img">${imgHTML(item)}</div>
         <div class="item-info">
           <div class="item-weapon">${esc(item.weapon || '')}</div>
           <div class="item-name">${esc(item.skin || item.name)}</div>

@@ -57,7 +57,7 @@ window.CASES = (function () {
   function renderContents() {
     renderOdds();
     const list = S.contentsForCase(currentCase);
-    document.getElementById('contents-count').textContent = `(${list.length} вариантов · все степени износа)`;
+    document.getElementById('contents-count').textContent = `(${list.length} скинов)`;
     document.getElementById('contents-grid').innerHTML = list.map((s) => FX.itemCardHTML(s)).join('');
   }
 

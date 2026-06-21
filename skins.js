@@ -8,20 +8,21 @@ window.SKINS = (function () {
   const caseScale = {}; // caseId -> RTP calibration multiplier
   let ready = false;
 
-  function placeholder(skin) {
-    const c = skin.color || '#6c5cff';
-    const label = (skin.skin || skin.name || '').slice(0, 16);
-    const wep = (skin.weapon || '').slice(0, 14);
-    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='200' height='150'>
-      <defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>
-        <stop offset='0' stop-color='${c}' stop-opacity='0.9'/>
-        <stop offset='1' stop-color='#0a0c1c' stop-opacity='0.95'/></linearGradient></defs>
-      <rect width='200' height='150' rx='12' fill='url(#g)'/>
-      <text x='100' y='66' font-family='Arial' font-size='15' font-weight='bold' fill='white' text-anchor='middle'>${esc(wep)}</text>
-      <text x='100' y='90' font-family='Arial' font-size='12' fill='rgba(255,255,255,0.85)' text-anchor='middle'>${esc(label)}</text>
-    </svg>`;
-    return 'data:image/svg+xml,' + encodeURIComponent(svg);
+  const GENERIC_PH = 'data:image/svg+xml,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect width="120" height="80" rx="8" fill="#1a2240"/><path d="M36 52h48" stroke="#6c5cff" stroke-width="3" stroke-linecap="round"/></svg>'
+  );
+  const phCache = {};
+
+  function genericPlaceholder(color) {
+    const c = color || '#6c5cff';
+    if (phCache[c]) return phCache[c];
+    phCache[c] = 'data:image/svg+xml,' + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect width="120" height="80" rx="8" fill="${c}" opacity="0.22"/><rect x="30" y="28" width="60" height="24" rx="4" fill="${c}" opacity="0.35"/></svg>`
+    );
+    return phCache[c];
   }
+
+  function placeholder(skin) { return genericPlaceholder(skin && skin.color); }
   function esc(s) { return String(s).replace(/[<>&]/g, (m) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[m])); }
 
   let IMG_LOOKUP = {};
@@ -53,14 +54,50 @@ window.SKINS = (function () {
     return typeof url === 'string' && /^https?:\/\//i.test(url.trim());
   }
 
-  function ensureImage(item) {
+  function resolveImageUrl(item) {
     if (isValidImageUrl(item.image)) return item.image.trim();
     const found = lookupImage(item.weapon, item.skin, item.name);
     if (found) return found;
-    return placeholder(item);
+    if (item.id && ALL.length) {
+      const cat = ALL.find((s) => s.id === item.id);
+      if (cat && isValidImageUrl(cat.image)) return cat.image;
+    }
+    return '';
   }
 
-  function resolveImage(item) { return ensureImage(item); }
+  function ensureImage(item) {
+    const url = resolveImageUrl(item);
+    return url || genericPlaceholder(item.color);
+  }
+
+  function resolveImage(item) { return resolveImageUrl(item) || genericPlaceholder(item.color); }
+
+  function buildPatternImages(raw) {
+    const map = {};
+    if (!Array.isArray(raw)) return map;
+    for (const s of raw) {
+      if (!s || !s.image) continue;
+      const weapon = (s.weapon && s.weapon.name) || (s.name || '').split('|')[0].trim();
+      const skin = (s.pattern && s.pattern.name) || (s.name || '').split('|')[1] || '';
+      if (weapon && skin) {
+        const key = (weapon + '|' + skin).toLowerCase();
+        if (!map[key]) map[key] = s.image;
+      }
+      if (s.name) map[s.name.toLowerCase().replace(/^[★\s]+/, '')] = s.image;
+    }
+    return map;
+  }
+
+  function pickImage(weapon, skin, name, direct, patternImg) {
+    if (isValidImageUrl(direct)) return direct.trim();
+    const key = (weapon + '|' + skin).toLowerCase();
+    if (patternImg[key]) return patternImg[key];
+    if (name) {
+      const nk = name.toLowerCase().replace(/^[★\s]+/, '');
+      if (patternImg[nk]) return patternImg[nk];
+    }
+    return lookupImage(weapon, skin, name) || '';
+  }
 
   function index(list) {
     ALL = list;
@@ -72,7 +109,7 @@ window.SKINS = (function () {
 
   async function fetchJSON(url, timeout) {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), timeout || 9000);
+    const t = setTimeout(() => ctrl.abort(), timeout || 5000);
     try {
       const res = await fetch(url, { signal: ctrl.signal, cache: 'force-cache' });
       clearTimeout(t);
@@ -86,13 +123,15 @@ window.SKINS = (function () {
     let raw = null;
     const sources = (D.API_MIRRORS && D.API_MIRRORS.length) ? D.API_MIRRORS : [D.API_URL];
     for (const url of sources) {
-      raw = await fetchJSON(url, 9000);
+      raw = await fetchJSON(url, 5000);
       if (Array.isArray(raw) && raw.length) break;
       raw = null;
     }
 
     let list;
+    let patternImg = {};
     if (Array.isArray(raw) && raw.length) {
+      patternImg = buildPatternImages(raw);
       const seen = new Set();
       list = [];
       for (const s of raw) {
@@ -101,6 +140,8 @@ window.SKINS = (function () {
         const rarity = D.normalizeRarity(s.rarity && s.rarity.name, s.category && s.category.name);
         const weapon = (s.weapon && s.weapon.name) || s.name.split('|')[0].trim();
         const skin = s.pattern && s.pattern.name ? s.pattern.name : (s.name.split('|')[1] || '').trim();
+        const image = pickImage(weapon, skin, s.name, s.image, patternImg);
+        if (!image) continue;
         list.push({
           id: s.id || s.name,
           name: s.name,
@@ -108,16 +149,31 @@ window.SKINS = (function () {
           skin: skin || s.name,
           rarity,
           color: D.RARITIES[rarity].color,
-          image: s.image || lookupImage(weapon, skin, s.name) || null,
+          image,
           price: D.priceFor(rarity, s.name, weapon, skin),
         });
       }
       D.mergeBudgetSkins(list);
+      list.forEach((skin) => {
+        if (!isValidImageUrl(skin.image)) {
+          skin.image = pickImage(skin.weapon, skin.skin, skin.name, skin.image, patternImg);
+        }
+      });
+      list = list.filter((skin) => isValidImageUrl(skin.image));
     } else {
-      list = D.buildFallback().map((s) => ({ ...s, price: D.priceFor(s.rarity, s.name, s.weapon, s.skin) }));
+      list = D.buildFallback().map((s) => ({
+        ...s,
+        image: pickImage(s.weapon, s.skin, s.name, s.image, patternImg),
+        price: D.priceFor(s.rarity, s.name, s.weapon, s.skin),
+      })).filter((s) => isValidImageUrl(s.image));
     }
 
-    list.forEach((s) => { s.image = ensureImage(s); });
+    if (!list.length) {
+      list = D.buildFallback().map((s) => ({
+        ...s,
+        price: D.priceFor(s.rarity, s.name, s.weapon, s.skin),
+      })).filter((s) => isValidImageUrl(s.image));
+    }
     index(list);
     ready = true;
     return list;
@@ -160,15 +216,14 @@ window.SKINS = (function () {
       if (!arr.length) return;
       const skins = arr.slice(0, limits[tier] || 8);
       skins.forEach((s) => {
-        D.WEARS.forEach((wear) => {
-          const market = Math.max(1, Math.round(s.price * wear.mult));
-          const price = E().sellPrice(market);
-          out.push({
-            id: s.id + '-' + wear.short, name: s.name, weapon: s.weapon, skin: s.skin,
-            rarity: s.rarity, color: s.color, image: s.image,
-            wear: wear.short, wearName: wear.name, wearNameRu: wear.nameRu,
-            price, marketPrice: market, dropTier: tier,
-          });
+        const wear = D.WEARS.find((w) => w.short === 'FT') || D.WEARS[2];
+        const market = Math.max(1, Math.round(s.price * wear.mult));
+        const price = E().sellPrice(market);
+        out.push({
+          id: s.id + '-' + wear.short, name: s.name, weapon: s.weapon, skin: s.skin,
+          rarity: s.rarity, color: s.color, image: s.image,
+          wear: wear.short, wearName: wear.name, wearNameRu: wear.nameRu,
+          price, marketPrice: market, dropTier: tier,
         });
       });
     });
@@ -224,7 +279,7 @@ window.SKINS = (function () {
     const price = E().sellPrice(market); // цена в инвентаре = после комиссии при продаже
     return {
       id: skin.id, name: skin.name, weapon: skin.weapon, skin: skin.skin,
-      rarity: skin.rarity, color: skin.color, image: ensureImage(skin),
+      rarity: skin.rarity, color: skin.color, image: skin.image || resolveImageUrl(skin),
       wear: wear.short, wearName: wear.name, wearNameRu: wear.nameRu,
       price, marketPrice: market,
     };
@@ -240,7 +295,7 @@ window.SKINS = (function () {
     const price = E().sellPrice(market);
     return {
       id: skin.id, name: skin.name, weapon: skin.weapon, skin: skin.skin,
-      rarity: skin.rarity, color: skin.color, image: ensureImage(skin),
+      rarity: skin.rarity, color: skin.color, image: skin.image || resolveImageUrl(skin),
       wear: wear.short, wearName: wear.name, wearNameRu: wear.nameRu,
       price, marketPrice: market,
     };
@@ -269,11 +324,11 @@ window.SKINS = (function () {
 
     let pool = ALL.filter((s) => {
       const p = catalogSellPrice(s);
-      return p >= lo && p <= hi;
+      return p >= lo && p <= hi && isValidImageUrl(s.image);
     });
 
     if (pool.length < 6) {
-      pool = ALL.filter((s) => catalogSellPrice(s) >= minP)
+      pool = ALL.filter((s) => catalogSellPrice(s) >= minP && isValidImageUrl(s.image))
         .sort((a, b) => Math.abs(catalogSellPrice(a) - idealPrice) - Math.abs(catalogSellPrice(b) - idealPrice));
     }
     if (!pool.length) {
@@ -312,7 +367,7 @@ window.SKINS = (function () {
   return {
     load, isReady, all, poolForCase, contentsForCase, featuredForCase, rollFromCase,
     decorate, decorateForUpgrade, skinsNearPrice, upgradeTargets, findUpgradeTarget,
-    randomDrop, placeholder, resolveImage, ensureImage, shuffle, expectedDrop,
+    randomDrop, placeholder, genericPlaceholder, resolveImage, resolveImageUrl, ensureImage, shuffle, expectedDrop,
     byRarity: () => byRarity,
   };
 })();
